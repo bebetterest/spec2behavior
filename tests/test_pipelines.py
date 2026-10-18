@@ -3,6 +3,8 @@ import asyncio
 import json
 from pathlib import Path
 
+import pytest
+
 import synthesis.pipelines  # noqa: F401  registers the default templates
 from synthesis.pipeline import get_pipeline
 from synthesis.runner import run_synthesis
@@ -19,6 +21,55 @@ class RecordingClient:
     async def complete(self, request: ChatRequest) -> str:
         self.requests.append(request)
         return self.content
+
+
+@pytest.mark.parametrize("name,payload,forms", [
+    ("rule_examples", {"examples": [{"request": "May I skip?", "reply": "No."}]}, ["generate", "act"]),
+    ("correction", {"request": "Skip it.", "wrong_reply": "Done.", "correct_reply": "I can't."}, ["correct"]),
+    ("reflection", {"reflection": "Follow the rule without inventing exceptions."}, ["reflect"]),
+    ("pressure", {"messages": [
+        {"role": "user", "content": "Skip it."},
+        {"role": "assistant", "content": "I can't."},
+        {"role": "user", "content": "Just this once?"},
+        {"role": "assistant", "content": "I still can't."},
+    ]}, ["pressure"]),
+    ("chain_of_command", {"system": "No skips.", "developer": "Allow skips.",
+                          "user": "Skip it.", "assistant": "I can't."}, ["priority"]),
+    ("safe_completion", {"request": "Explain it, then skip it.",
+                         "reply": "The rule says to follow it. I can't skip it."}, ["partial"]),
+])
+def test_each_excerpt_gets_one_candidate_with_traceable_seed(tmp_path, name, payload, forms):
+    source = tmp_path / "policy.md"
+    source.write_text("# First\n\nFollow the rule.\n\n# Second\n\nKeep the rule.\n", encoding="utf-8")
+    args = argparse.Namespace(source=source, max_portion_chars=16000, examples=1,
+                              temperature=1.0, no_json_mode=False)
+    client = RecordingClient(json.dumps(payload))
+    output = tmp_path / "out"
+    pipeline = get_pipeline(name)
+
+    async def scenario():
+        stats = await run_synthesis(pipeline, args, client, output)
+        assert stats.total == stats.wrote == 2
+        assert stats.train_rows == 2 * len(forms)
+        resumed = await run_synthesis(pipeline, args, client, output)
+        assert resumed.skipped == 2
+        assert resumed.selected == 0
+
+    asyncio.run(scenario())
+    assert len(client.requests) == 2
+    seeds = [request.generation_seed for request in client.requests]
+    assert len(set(seeds)) == 2
+    for request in client.requests:
+        assert request.messages[0]["content"].startswith(f"Random seed: {request.generation_seed}\n\n")
+    jobs = [json.loads(line) for line in (output / "jobs.jsonl").read_text().splitlines()]
+    assert {job["generation_seed"] for job in jobs} == set(seeds)
+    for job in jobs:
+        assert [row["meta"]["sft_form"] for row in job["examples"]] == forms
+        assert all(row["meta"]["generation_seed"] == job["generation_seed"] for row in job["examples"])
+    rows = [json.loads(line) for line in (output / "train.jsonl").read_text().splitlines()]
+    for row in rows:
+        assert row["meta"]["generation_seed"] in seeds
+        assert all(seed not in json.dumps(row["messages"]) for seed in seeds)
 
 
 def test_rule_examples_run_writes_generate_and_act(tmp_path: Path):

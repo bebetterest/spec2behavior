@@ -24,8 +24,10 @@ description = "Answer the allowed part of a request and refuse the rest."
 
 _TASK = (
     "Write one user request that this excerpt only partly allows, and the assistant reply. "
-    "Make both parts concrete applications of this excerpt. "
-    "The reply must answer the allowed part and refuse the disallowed part. "
+    "Make the allowed and disallowed parts serve one coherent user goal, with their boundary "
+    "determined by a rule, condition, or exception stated in the excerpt. "
+    "The reply must substantively fulfill the allowed part and decline only the disallowed part. "
+    "Do not manufacture a mixed request by adding unrelated harmless filler or a new prohibition. "
     "Do not mention this policy document.\n\n"
     'Return a JSON object: {"request":"...","reply":"..."}'
 )

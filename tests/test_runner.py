@@ -4,7 +4,9 @@ import json
 from pathlib import Path
 
 import pytest
+import httpx
 
+from synthesis.client import ChatClient
 from synthesis.runner import run_synthesis
 from synthesis.types import ChatRequest, Example, Job, ParseError, Produced, RetryableError
 from synthesis.pipeline import Pipeline
@@ -333,6 +335,42 @@ def test_multi_step_job_limits_calls_and_resumes(tmp_path: Path):
     assert row["messages"][0]["trainable"] is False
 
 
+@pytest.mark.parametrize("multi_step", [False, True])
+def test_api_trace_associates_concurrent_and_multi_step_calls_with_jobs(tmp_path, multi_step):
+    output = tmp_path / "run"
+    pipeline = TwoStepPipeline() if multi_step else EchoPipeline()
+
+    async def handler(request):
+        text = json.loads(request.content)["messages"][-1]["content"]
+        await asyncio.sleep(0.01)
+        return httpx.Response(200, json={"choices": [{"message": {"content": f"answer {text}"}}]})
+
+    async def scenario():
+        client = ChatClient(
+            base_url="https://example.com/v1", api_key=None, model="demo",
+            transport=httpx.MockTransport(handler), trust_env=False,
+        )
+        try:
+            stats = await run_synthesis(pipeline, _args(3), client, output, concurrency=3)
+        finally:
+            await client.aclose()
+        assert stats.wrote == (1 if multi_step else 3)
+
+    asyncio.run(scenario())
+    events = _read(output / "api.jsonl")
+    calls = {event["call_id"] for event in events}
+    assert len(calls) == (2 if multi_step else 3)
+    jobs = {job["id"] for job in _read(output / "jobs.jsonl")}
+    assert {event["job_id"] for event in events} == jobs
+    for call in calls:
+        request, response = [event for event in events if event["call_id"] == call]
+        assert request["event"] == "request" and response["event"] == "response"
+        assert request["job_id"] == response["job_id"]
+        assert request["pipeline"] == response["pipeline"] == pipeline.name
+        text = request["body"]["messages"][-1]["content"]
+        assert json.loads(response["body"])["choices"][0]["message"]["content"] == f"answer {text}"
+
+
 def test_limit_must_be_positive(tmp_path: Path):
     async def scenario() -> None:
         with pytest.raises(ValueError, match="limit"):
@@ -368,6 +406,7 @@ def test_overwrite_preview_selects_all_jobs_without_touching_checkpoints(tmp_pat
         await run_synthesis(EchoPipeline(), _args(1), client, output)
         (output / "errors.jsonl").write_text('{"id":"job-1","error":"old error"}\n', encoding="utf-8")
         (output / "failures.jsonl").write_text('{"id":"job-1","error":"old failure"}\n', encoding="utf-8")
+        (output / "api.jsonl").write_text('{"event":"request","job_id":"old"}\n', encoding="utf-8")
         before = {path.name: path.read_bytes() for path in output.iterdir()}
         preview = await run_synthesis(EchoPipeline(), _args(2), client, output, overwrite=True, dry_run=True)
         assert preview.selected == 2
@@ -385,6 +424,7 @@ def test_overwrite_preview_selects_all_jobs_without_touching_checkpoints(tmp_pat
         executed = await run_synthesis(EchoPipeline(), _args(2), client, output, overwrite=True)
         assert executed.selected == preview.selected
         assert executed.wrote == 2
+        assert not (output / "api.jsonl").exists()
 
     asyncio.run(scenario())
 

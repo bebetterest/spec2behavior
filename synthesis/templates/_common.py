@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import secrets
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
@@ -13,12 +14,27 @@ from synthesis.portions import DEFAULT_MAX_PORTION_CHARS, split_portions
 from synthesis.types import ChatRequest, Example, ParseError
 
 _GROUNDING = (
-    "Ground the response in the excerpt. For examples, choose a concrete scenario directly governed by it. "
-    "Preserve its stated permissions, exceptions, and limits; do not add restrictions or permissions. "
-    "Make generated conversations self-contained by including needed scenario facts in their messages. "
-    "Do not claim an assistant identity, model family, developer, knowledge cutoff, or available tools "
-    "unless those facts are explicitly supplied in the excerpt or task. "
-    "Choose another scenario if it would require inventing those facts."
+    "Use the excerpt as the source of behavioral rules. Preserve each rule's scope, conditions, "
+    "exceptions, and allowed discretion. Keep requirements, recommendations, defaults, and permissions "
+    "distinct; do not strengthen or weaken them, or turn unspecified matters into additional rules.\n\n"
+    "Choose a concrete scenario in which a stated rule or exception determines the response. "
+    "You may invent ordinary scenario details, but place any facts needed to justify a trained reply "
+    "in the saved input messages. Do not rely on authoring context that will be absent from the "
+    "training conversation, or import facts about the teacher's deployment into its fictional assistant. "
+    "Keep facts consistent across turns. When a decision depends on missing information, express "
+    "that uncertainty or ask for the needed information rather than assuming it.\n\n"
+    "Check the assistant training targets for rule fidelity, supported factual claims, and whether "
+    "they fulfill the user's request wherever the excerpt permits. A deliberately violating draft "
+    "requested by the task should violate the selected rule, without changing the scenario facts. "
+    "Use the random seed to vary appropriate scenario details and wording; omit the seed from your output. "
+    "Return only the requested JSON object."
+)
+
+_INAPPLICABLE = (
+    "If the excerpt cannot support this training form without inventing or changing a behavioral "
+    'rule, return {"not_applicable":"brief reason grounded in the excerpt"} instead of the normal '
+    "object. Use this for a mismatch between excerpt and training form, not merely because the "
+    "example calls for a refusal."
 )
 
 
@@ -74,16 +90,26 @@ def excerpt(item: dict[str, Any]) -> str:
 
 
 def generation_request(item: dict[str, Any], args: argparse.Namespace, task: str) -> ChatRequest:
+    seed = secrets.token_hex(16)
+    item["generation_seed"] = seed
     extra = {} if args.no_json_mode else {"response_format": {"type": "json_object"}}
     return ChatRequest(
-        messages=[{"role": "user", "content": f"{excerpt(item)}\n\n{_GROUNDING}\n\n{task}"}],
+        messages=[{
+            "role": "user",
+            "content": f"Random seed: {seed}\n\n{excerpt(item)}\n\n{_GROUNDING}\n\n{task}\n\n{_INAPPLICABLE}",
+        }],
         temperature=args.temperature,
         extra=extra,
+        generation_seed=seed,
     )
 
 
 def load_object(content: str) -> dict[str, Any]:
-    return parse_json_object(content)
+    data = parse_json_object(content)
+    if "not_applicable" in data:
+        reason = require_text(data, "not_applicable", content)
+        raise ParseError(f"template not applicable: {reason}", raw=content)
+    return data
 
 
 def require_text(data: dict[str, Any], key: str, raw: str) -> str:
@@ -94,11 +120,17 @@ def require_text(data: dict[str, Any], key: str, raw: str) -> str:
 
 
 def saved(item: dict[str, Any], form: str, messages: list[dict[str, str]]) -> Example:
+    meta = {
+        "source": item["source"],
+        "portion_id": item["portion_id"],
+        "sft_form": form,
+    }
+    seed = item.get("generation_seed")
+    if seed:
+        if any(seed in message["content"] for message in messages):
+            raise ParseError("generation seed must not appear in training messages")
+        meta["generation_seed"] = seed
     return Example(
         messages=messages,
-        meta={
-            "source": item["source"],
-            "portion_id": item["portion_id"],
-            "sft_form": form,
-        },
+        meta=meta,
     )

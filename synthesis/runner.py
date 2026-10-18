@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
-from synthesis.client import build_chat_body
+from synthesis.client import ChatClient, TraceCallback, build_chat_body
 from synthesis.io import append_jsonl, drop_incomplete_tail, load_ids, materialize_train, train_row
 from synthesis.messages import normalize_messages
 from synthesis.pipeline import Pipeline
@@ -57,6 +57,10 @@ class RunPaths:
     def failures(self) -> Path:
         return self.output_dir / "failures.jsonl"
 
+    @property
+    def api(self) -> Path:
+        return self.output_dir / "api.jsonl"
+
 
 async def run_synthesis(
     pipeline: Pipeline,
@@ -93,10 +97,10 @@ async def run_synthesis(
     jobs = _load_jobs(pipeline, args)
     paths = RunPaths(output_dir)
     if overwrite and not dry_run:
-        for path in (paths.jobs, paths.train, paths.errors, paths.failures):
+        for path in (paths.jobs, paths.train, paths.errors, paths.failures, paths.api):
             path.unlink(missing_ok=True)
     if not dry_run:
-        for path in (paths.jobs, paths.errors, paths.failures):
+        for path in (paths.jobs, paths.errors, paths.failures, paths.api):
             drop_incomplete_tail(path)
     completed = set() if overwrite else load_ids(paths.jobs, ignore_incomplete_tail=dry_run)
     # Keep error history, including jobs outside --limit. Successful retries
@@ -124,10 +128,13 @@ async def run_synthesis(
         return stats
 
     semaphore = asyncio.Semaphore(concurrency)
-    limited = _LimitedCompleter(client, semaphore)
     wrote_lock = asyncio.Lock()
 
     async def run_one(job: Job) -> None:
+        def record(event: dict[str, Any]) -> None:
+            append_jsonl(paths.api, {**event, "job_id": job.id, "pipeline": pipeline.name})
+
+        limited = _LimitedCompleter(client, semaphore, trace=record)
         outcome = await _generate(pipeline, job, args, limited)
         async with wrote_lock:
             _commit(paths, pipeline, job, outcome, client, stats)
@@ -218,6 +225,8 @@ def _commit(
 ) -> None:
     position = stats.wrote + stats.errors + stats.pending + 1
     label = f"[{position}/{stats.selected}]"
+    seed = job.input.get("generation_seed")
+    provenance = {"generation_seed": seed} if seed else {}
     if isinstance(outcome, tuple):
         raw, examples = outcome
         model = getattr(client, "model", None)
@@ -228,7 +237,7 @@ def _commit(
                 meta.setdefault("model", model)
         append_jsonl(
             paths.jobs,
-            {"id": job.id, "pipeline": pipeline.name, "examples": examples, "raw": raw},
+            {"id": job.id, "pipeline": pipeline.name, **provenance, "examples": examples, "raw": raw},
         )
         for example in examples:
             append_jsonl(paths.train, train_row(job.id, example))
@@ -238,7 +247,7 @@ def _commit(
     if isinstance(outcome, RetryableError):
         append_jsonl(
             paths.failures,
-            {"id": job.id, "pipeline": pipeline.name, "error": str(outcome)},
+            {"id": job.id, "pipeline": pipeline.name, **provenance, "error": str(outcome)},
         )
         stats.pending += 1
         _log(f"{label} pending {job.id}: {outcome}")
@@ -246,7 +255,7 @@ def _commit(
     raw = outcome.raw if isinstance(outcome, ParseError) else None
     append_jsonl(
         paths.errors,
-        {"id": job.id, "pipeline": pipeline.name, "error": str(outcome), "raw": raw},
+        {"id": job.id, "pipeline": pipeline.name, **provenance, "error": str(outcome), "raw": raw},
     )
     stats.errors += 1
     _log(f"{label} error {job.id}: {outcome}")
@@ -289,12 +298,17 @@ def _print_dry_run(
 class _LimitedCompleter:
     """Bound every ``complete`` call to the run-wide concurrency limit."""
 
-    def __init__(self, inner: _Completer, semaphore: asyncio.Semaphore) -> None:
+    def __init__(
+        self, inner: _Completer, semaphore: asyncio.Semaphore, *, trace: TraceCallback | None = None,
+    ) -> None:
         self._inner = inner
         self._semaphore = semaphore
+        self._trace = trace
 
     async def complete(self, request: ChatRequest) -> str:
         async with self._semaphore:
+            if isinstance(self._inner, ChatClient) and self._trace is not None:
+                return await self._inner.complete(request, trace=self._trace)
             return await self._inner.complete(request)
 
 

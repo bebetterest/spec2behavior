@@ -27,17 +27,14 @@ python -m synthesis list
 python -m synthesis run rule_examples --help
 ```
 
-Put `OPENROUTER_API_KEY` in `.env`, using [.env.example](.env.example) as a reference. Synthesis reads it automatically from the current directory. CLI flags override process environment variables, which override `.env`. Use `--env-file FILE` to select another file.
+Put `DEEPSEEK_API_KEY` in `.env`, using [.env.example](.env.example) as a reference. Synthesis reads it automatically from the current directory. CLI flags override process environment variables, which override `.env`. Use `--env-file FILE` to select another file.
 
 Preview one request without calling an API or writing output:
 
 ```bash
 python -m synthesis run rule_examples \
   --source generic/model_spec.md \
-  --output runs/model-spec/rule-examples-openrouter \
-  --provider openrouter \
-  --model deepseek/deepseek-v3.2 \
-  --thinking on \
+  --output runs/model-spec/rule-examples-deepseek \
   --limit 1 \
   --max-retries 0 \
   --dry-run
@@ -47,11 +44,15 @@ Remove `--dry-run` to generate that sample. Repeat the command to resume after a
 
 The other default chains are `correction`, `reflection`, `pressure`, `chain_of_command`, and `safe_completion`. They share `--source` and write different `sft_form` values.
 
-Defaults are a 16000-character input target, a 16384-token output budget, temperature 1.0, and one request/reply pair for `rule_examples` (one `generate` and one `act` training row). Override them with `--max-portion-chars`, `--max-tokens`, `--temperature`, and `--examples`. `--help` lists all defaults. Use a separate output directory for each source and chain.
+Defaults are the DeepSeek API with `deepseek-flash` and thinking on, a 16000-character input target, a 16384-token output budget, temperature 1.0, and one request/reply pair for `rule_examples` (one `generate` and one `act` training row). Override them with `--provider`, `--model`, `--thinking`, `--max-portion-chars`, `--max-tokens`, `--temperature`, and `--examples`. `--help` lists the settings. Use a separate output directory for each source and chain.
 
-Switch APIs with `--provider deepseek`, `--provider openrouter`, or `--provider openai`, using `DEEPSEEK_API_KEY`, `OPENROUTER_API_KEY`, or `OPENAI_API_KEY` respectively. DeepSeek and OpenRouter support `--thinking on` or `--thinking off`; `--thinking default` leaves the choice to the server. The default provider, `auto`, keeps the existing `--base-url` / `OPENAI_BASE_URL` setup. See [synthesis settings](synthesis/README.md#run) for examples.
+Each excerpt/template combination produces one candidate. Every new candidate's prompt starts with `Random seed: <32 random hex characters>` to encourage varied scenarios and wording. The value is recorded as `generation_seed` in API events, job/error records, and SFT metadata, and is excluded from training messages. HTTP retries reuse the request and seed; generating a candidate again creates a new seed. A dry-run seed is only a preview. This prompt hint does not guarantee different outputs or deterministic replay.
 
-`runs/model-spec/rule-examples-openrouter/train.jsonl` is chat JSONL. Each line has `messages` plus `id`, `job_id`, and `meta`. New row ids include the chain name so different templates can be combined. Tinker Cookbook's `FromConversationFileBuilder` trains on `messages`.
+Switch APIs with `--provider deepseek`, `--provider openrouter`, or `--provider openai`, using `DEEPSEEK_API_KEY`, `OPENROUTER_API_KEY`, or `OPENAI_API_KEY` respectively, and select that provider's model with `--model`. DeepSeek and OpenRouter default to thinking on; `--thinking off` disables it and `--thinking default` leaves the choice to the server. OpenAI keeps its server default when the flag is omitted. `--provider auto` keeps the existing `--base-url` / `OPENAI_BASE_URL` setup. See [synthesis settings](synthesis/README.md#run) for examples.
+
+`runs/model-spec/rule-examples-deepseek/train.jsonl` is chat JSONL. Each line has `messages` plus `id`, `job_id`, and `meta`. New row ids include the chain name so different templates can be combined. Tinker Cookbook's `FromConversationFileBuilder` trains on `messages`.
+
+Each run also keeps `api.jsonl`: the complete request JSON and raw response text for every HTTP attempt, including retries and failures, linked by job and call ids. Returned thinking and usage remain available there; SFT uses only final answers. Credentials are omitted or redacted. Run outputs stay local under the ignored `runs/` directory.
 
 Parsing validates structure, not semantic correctness. Review generated conversations for rule compliance and invented facts, then save the accepted rows to a separate file such as `runs/model-spec/reviewed/train.jsonl`. Keep that file outside the generator's output directory: resume rebuilds its `train.jsonl` from the original jobs.
 

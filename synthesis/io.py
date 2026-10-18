@@ -21,6 +21,13 @@ def drop_incomplete_tail(path: Path) -> None:
 
     if not path.exists():
         return
+    with path.open("rb") as handle:
+        handle.seek(0, 2)
+        if handle.tell() == 0:
+            return
+        handle.seek(-1, 2)
+        if handle.read(1) == b"\n":
+            return
     data = path.read_bytes()
     if not data or data.endswith(b"\n"):
         return

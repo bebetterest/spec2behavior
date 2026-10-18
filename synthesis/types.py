@@ -28,6 +28,7 @@ class ChatRequest:
 
     ``extra`` is merged into the JSON body after the standard fields, so a
     pipeline can pass vendor-specific keys such as ``response_format``.
+    ``generation_seed`` is prompt provenance for tracing, not an API sampling field.
     """
 
     messages: list[dict[str, Any]]
@@ -35,6 +36,7 @@ class ChatRequest:
     max_tokens: int | None = None
     model: str | None = None
     extra: dict[str, Any] = field(default_factory=dict)
+    generation_seed: str | None = None
 
 
 @dataclass

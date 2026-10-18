@@ -1,5 +1,6 @@
 import argparse
 import json
+import re
 
 import pytest
 
@@ -19,6 +20,51 @@ ITEM = {
 
 def _saved(messages):
     return normalize_messages(messages, require_user=True, require_assistant=True)
+
+
+@pytest.mark.parametrize(
+    "template",
+    [rule_examples, correction, reflection, pressure, chain_of_command, safe_completion],
+)
+def test_building_another_candidate_refreshes_the_seed(template):
+    item = dict(ITEM)
+    args = argparse.Namespace(examples=1, temperature=1.0, no_json_mode=False)
+    first = template.prompt(item, args)
+    second = template.prompt(item, args)
+    assert re.fullmatch(r"[0-9a-f]{32}", first.generation_seed)
+    assert re.fullmatch(r"[0-9a-f]{32}", second.generation_seed)
+    assert first.generation_seed != second.generation_seed
+    assert item["generation_seed"] == second.generation_seed
+
+
+@pytest.mark.parametrize("field", ["request", "reply"])
+def test_a_seed_echoed_in_training_messages_is_rejected(field):
+    item = dict(ITEM)
+    args = argparse.Namespace(temperature=1.0, no_json_mode=False)
+    request = safe_completion.prompt(item, args)
+    payload = {"request": "Explain it, then skip it.", "reply": "I can explain it, but can't skip it."}
+    payload[field] = request.generation_seed
+    with pytest.raises(ParseError, match="generation seed must not appear"):
+        safe_completion.parse(item, json.dumps(payload), args)
+
+
+@pytest.mark.parametrize(
+    "template",
+    [rule_examples, correction, reflection, pressure, chain_of_command, safe_completion],
+)
+def test_inapplicable_excerpt_is_excluded_with_its_reason(template):
+    content = json.dumps({"not_applicable": "The excerpt defines terms without this behavioral boundary."})
+    with pytest.raises(ParseError, match="template not applicable: The excerpt defines terms") as error:
+        template.parse(ITEM, content, argparse.Namespace(examples=1))
+    assert error.value.raw == content
+
+
+@pytest.mark.parametrize("reason", [None, False, "", "   "])
+def test_inapplicable_excerpt_requires_a_nonempty_reason(reason):
+    content = json.dumps({"not_applicable": reason})
+    with pytest.raises(ParseError, match="not_applicable") as error:
+        reflection.parse(ITEM, content, argparse.Namespace())
+    assert error.value.raw == content
 
 
 def test_rule_examples_parse_emits_generate_then_act():

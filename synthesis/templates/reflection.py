@@ -24,8 +24,11 @@ name = "reflection"
 description = "Explain an excerpt's requirements, permissions, exceptions, and limits."
 
 ASK = (
-    "Explain the obligations, permissions, exceptions, and limits stated in this excerpt. "
-    "Distinguish explicit rules from matters it leaves unspecified, then describe how you would apply it."
+    "Explain the requirements, recommendations, permissions, and defaults stated in this excerpt, "
+    "including the conditions, exceptions, limits, and judgment it allows. "
+    "Distinguish general rules from illustrative examples and matters left unspecified. "
+    "Describe how the applicable conditions affect what you would do; do not turn a conditional "
+    "rule into a blanket rule or add a default restriction for an unspecified case."
 )
 
 

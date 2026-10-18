@@ -7,6 +7,136 @@ from synthesis.client import ChatClient, build_chat_body
 from synthesis.types import ChatRequest, FatalAPIError, ParseError, RetryableError
 
 
+def test_api_trace_keeps_each_attempt_and_raw_response_without_credentials():
+    import asyncio
+
+    events = []
+    sent = []
+    secret = "private-api-key"
+    seed = "0123456789abcdef0123456789abcdef"
+    response_body = '{ "choices": [{"message": {"content": "done", "reasoning_content": "notes"}}], "usage": {"total_tokens": 7}}\n'
+
+    def handler(request):
+        sent.append(json.loads(request.content))
+        if len(sent) == 1:
+            return httpx.Response(503, text=f"upstream unavailable: {secret}")
+        return httpx.Response(200, text=response_body, headers={"Authorization": f"Bearer {secret}"})
+
+    async def scenario():
+        client = ChatClient(
+            base_url="https://username:password@example.com/v1", api_key=secret, model="demo",
+            transport=httpx.MockTransport(handler), trust_env=False, max_retries=1, retry_backoff=0,
+        )
+        try:
+            result = await client.complete(
+                ChatRequest(
+                    messages=[{"role": "user", "content": f"test echo: {secret}"}],
+                    generation_seed=seed,
+                ),
+                trace=events.append,
+            )
+        finally:
+            await client.aclose()
+        assert result == "done"
+
+    asyncio.run(scenario())
+    assert [event["event"] for event in events] == ["request", "response", "error", "request", "response"]
+    assert [event["attempt"] for event in events] == [1, 1, 1, 2, 2]
+    assert len({event["call_id"] for event in events}) == 1
+    assert {event["generation_seed"] for event in events} == {seed}
+    assert sent[0] == sent[1]
+    assert "seed" not in sent[0]
+    assert "generation_seed" not in sent[0]
+    assert events[-1]["body"] == response_body
+    assert json.loads(events[-1]["body"])["usage"]["total_tokens"] == 7
+    assert events[0]["body"]["messages"][0]["content"] == "test echo: [REDACTED]"
+    assert sent[0]["messages"][0]["content"] == f"test echo: {secret}"
+    serialized = json.dumps(events)
+    for credential in (secret, "Authorization", "username", "password"):
+        assert credential not in serialized
+    assert all(event["url"] == "https://example.com/v1/chat/completions" for event in events)
+
+
+@pytest.mark.parametrize("failure", ["status", "invalid_json", "length", "network"])
+def test_api_trace_retains_failures_before_response_validation(failure):
+    import asyncio
+
+    events = []
+    response_body = 'not JSON\n' if failure == "invalid_json" else json.dumps({"choices": [{
+        "message": {"content": "partial"}, "finish_reason": "length" if failure == "length" else "stop",
+    }]})
+
+    def handler(request):
+        if failure == "network":
+            raise httpx.ConnectError("offline", request=request)
+        return httpx.Response(401 if failure == "status" else 200, text=response_body)
+
+    async def scenario():
+        client = ChatClient(
+            base_url="https://example.com/v1", api_key=None, model="demo", max_retries=0,
+            transport=httpx.MockTransport(handler), trust_env=False,
+        )
+        try:
+            with pytest.raises((FatalAPIError, RetryableError, ParseError)):
+                await client.complete(ChatRequest(messages=[{"role": "user", "content": "Hi"}]), trace=events.append)
+        finally:
+            await client.aclose()
+
+    asyncio.run(scenario())
+    assert events[0]["event"] == "request"
+    assert events[-1]["event"] == "error"
+    if failure == "network":
+        assert len(events) == 2
+    else:
+        assert events[1]["event"] == "response"
+        assert events[1]["body"] == response_body
+
+
+def test_api_trace_marks_a_cancelled_request_without_fabricating_a_response():
+    import asyncio
+
+    events = []
+
+    async def handler(request):
+        raise asyncio.CancelledError
+
+    async def scenario():
+        client = ChatClient(
+            base_url="https://example.com/v1", api_key=None, model="demo",
+            transport=httpx.MockTransport(handler), trust_env=False,
+        )
+        try:
+            with pytest.raises(asyncio.CancelledError):
+                await client.complete(ChatRequest(messages=[{"role": "user", "content": "Hi"}]), trace=events.append)
+        finally:
+            await client.aclose()
+
+    asyncio.run(scenario())
+    assert [event["event"] for event in events] == ["request", "cancelled"]
+
+
+def test_http_error_does_not_expose_an_echoed_api_key_to_checkpoint_logs():
+    import asyncio
+
+    secret = "private-api-key"
+
+    async def scenario():
+        client = ChatClient(
+            base_url="https://example.com/v1", api_key=secret, model="demo",
+            transport=httpx.MockTransport(lambda request: httpx.Response(401, text=f"Invalid key: {secret}")),
+            trust_env=False,
+        )
+        try:
+            with pytest.raises(FatalAPIError) as caught:
+                await client.complete(ChatRequest(messages=[{"role": "user", "content": "Hi"}]))
+            assert secret not in str(caught.value)
+            assert "[REDACTED]" in str(caught.value)
+        finally:
+            await client.aclose()
+
+    asyncio.run(scenario())
+
+
 def test_build_chat_body_omits_unset_fields_and_applies_extra_last():
     body = build_chat_body(
         ChatRequest(

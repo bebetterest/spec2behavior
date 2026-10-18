@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import math
+from collections.abc import Callable
+from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urlsplit
+from uuid import uuid4
 
 import httpx
 
@@ -15,11 +18,13 @@ from synthesis.types import ChatRequest, FatalAPIError, ParseError, RetryableErr
 _RETRYABLE_STATUS = frozenset({408, 409, 429, 500, 502, 503, 504})
 TOKEN_LIMIT_FIELDS = ("max_tokens", "max_completion_tokens")
 DEFAULT_MAX_TOKENS = 16384
+DEFAULT_DEEPSEEK_MODEL = "deepseek-flash"
 PROVIDER_DEFAULTS = {
     "openai": ("https://api.openai.com/v1", "OPENAI_API_KEY"),
     "deepseek": ("https://api.deepseek.com", "DEEPSEEK_API_KEY"),
     "openrouter": ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"),
 }
+TraceCallback = Callable[[dict[str, Any]], None]
 
 
 def resolve_provider(provider: str, base_url: str) -> str:
@@ -150,6 +155,7 @@ class ChatClient:
         self.thinking = thinking
         self.max_retries = max_retries
         self.retry_backoff = retry_backoff
+        self._api_key = api_key
         self._url = _completions_url(base_url)
         headers = {"Content-Type": "application/json"}
         if api_key:
@@ -164,19 +170,47 @@ class ChatClient:
     async def aclose(self) -> None:
         await self._client.aclose()
 
-    async def complete(self, request: ChatRequest) -> str:
+    async def complete(self, request: ChatRequest, *, trace: TraceCallback | None = None) -> str:
         body = build_chat_body(
             request, model=self.model, max_tokens=self.max_tokens,
             max_token_field=self.max_token_field, thinking=self.thinking, provider=self.provider,
         )
         if "model" not in body:
             raise FatalAPIError("no model set; pass --model or set SYNTHESIS_MODEL")
+        call_id = uuid4().hex
+
+        def record(event: str, attempt: int, **fields: Any) -> None:
+            if trace is not None:
+                trace(_redact({
+                    "event": event,
+                    "call_id": call_id,
+                    "attempt": attempt,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "provider": self.provider,
+                    "url": _trace_url(self._url),
+                    **({"generation_seed": request.generation_seed} if request.generation_seed else {}),
+                    **fields,
+                }, self._api_key))
+
         last_error: RetryableError | None = None
         attempts = self.max_retries + 1
         for attempt in range(attempts):
+            number = attempt + 1
+            record("request", number, body=body)
+
+            def received(response: httpx.Response) -> None:
+                record("response", number, status_code=response.status_code, body=response.text)
+
             try:
-                return await self._once(body)
+                return await self._once(body, on_response=received if trace is not None else None)
+            except asyncio.CancelledError:
+                record("cancelled", number)
+                raise
+            except (FatalAPIError, ParseError) as exc:
+                record("error", number, error_type=type(exc).__name__)
+                raise
             except RetryableError as exc:
+                record("error", number, error_type=type(exc).__name__)
                 last_error = exc
                 if attempt == attempts - 1:
                     break
@@ -184,22 +218,41 @@ class ChatClient:
         assert last_error is not None
         raise last_error
 
-    async def _once(self, body: dict[str, Any]) -> str:
+    async def _once(
+        self, body: dict[str, Any], *, on_response: Callable[[httpx.Response], None] | None = None,
+    ) -> str:
         try:
             response = await self._client.post(self._url, json=body)
         except (httpx.TimeoutException, httpx.TransportError) as exc:
-            raise RetryableError(f"request failed: {exc}") from exc
+            raise RetryableError(f"request failed: {_redact(str(exc), self._api_key)}") from exc
+        if on_response is not None:
+            on_response(response)
         if response.status_code in _RETRYABLE_STATUS or 500 <= response.status_code < 600:
             raise RetryableError(
-                f"HTTP {response.status_code}: {_snippet(response.text)}"
+                f"HTTP {response.status_code}: {_snippet(_redact(response.text, self._api_key))}"
             )
         if response.status_code >= 400:
-            raise FatalAPIError(f"HTTP {response.status_code}: {_snippet(response.text)}")
+            raise FatalAPIError(f"HTTP {response.status_code}: {_snippet(_redact(response.text, self._api_key))}")
         try:
             payload = response.json()
         except ValueError as exc:
             raise RetryableError(f"response is not JSON: {exc}") from exc
         return _message_text(payload)
+
+
+def _trace_url(url: str) -> str:
+    parts = urlsplit(url)
+    return parts._replace(netloc=parts.netloc.rsplit("@", 1)[-1], query="", fragment="").geturl()
+
+
+def _redact(value: Any, secret: str | None) -> Any:
+    if isinstance(value, str):
+        return value.replace(secret, "[REDACTED]") if secret else value
+    if isinstance(value, dict):
+        return {_redact(key, secret): _redact(item, secret) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_redact(item, secret) for item in value]
+    return value
 
 
 def _completions_url(base_url: str) -> str:

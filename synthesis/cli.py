@@ -18,7 +18,10 @@ from urllib.parse import urlsplit
 from dotenv import dotenv_values
 
 from synthesis.arguments import nonnegative_float, nonnegative_int, optional_positive_int, positive_float, positive_int
-from synthesis.client import DEFAULT_MAX_TOKENS, PROVIDER_DEFAULTS, TOKEN_LIMIT_FIELDS, ChatClient, resolve_provider
+from synthesis.client import (
+    DEFAULT_DEEPSEEK_MODEL, DEFAULT_MAX_TOKENS, PROVIDER_DEFAULTS, TOKEN_LIMIT_FIELDS,
+    ChatClient, resolve_provider,
+)
 from synthesis.io import materialize_train
 from synthesis.pipeline import PIPELINES, get_pipeline, load_pipeline_file
 from synthesis.runner import _log, run_synthesis
@@ -150,9 +153,6 @@ def _run(argv: list[str], implied_name: str | None = None) -> int:
             **(dotenv_values(env_file, interpolate=False, encoding="utf-8-sig") if env_file.is_file() else {}),
             **os.environ,
         }
-        model = args.model or config.get("SYNTHESIS_MODEL")
-        if not args.dry_run and not model:
-            raise ValueError("Pass --model or set SYNTHESIS_MODEL.")
         if args.provider == "auto":
             base_url = args.base_url or config.get("OPENAI_BASE_URL") or PROVIDER_DEFAULTS["openai"][0]
             provider = resolve_provider("auto", base_url)
@@ -163,7 +163,14 @@ def _run(argv: list[str], implied_name: str | None = None) -> int:
             default_url, key_env = PROVIDER_DEFAULTS[provider]
             base_url = args.base_url or default_url
             api_key = args.api_key or config.get(key_env)
-        if not args.dry_run and not api_key and urlsplit(base_url).hostname in {
+        hostname = urlsplit(base_url).hostname
+        model = args.model or config.get("SYNTHESIS_MODEL")
+        if not model and provider == "deepseek":
+            model = DEFAULT_DEEPSEEK_MODEL
+        if not args.dry_run and not model:
+            raise ValueError("Pass --model or set SYNTHESIS_MODEL.")
+        thinking = getattr(args, "thinking", "on" if provider in {"deepseek", "openrouter"} else "default")
+        if not args.dry_run and not api_key and hostname in {
             "api.openai.com", "api.deepseek.com", "openrouter.ai", "eu.openrouter.ai",
         }:
             print(f"Pass --api-key or set {key_env}.", file=sys.stderr)
@@ -177,7 +184,7 @@ def _run(argv: list[str], implied_name: str | None = None) -> int:
             retry_backoff=args.retry_backoff,
             max_tokens=args.max_tokens,
             max_token_field=args.max_token_field,
-            thinking={"default": None, "on": True, "off": False}[args.thinking],
+            thinking={"default": None, "on": True, "off": False}[thinking],
             provider=provider,
         )
     except (OSError, ValueError) as exc:
@@ -226,13 +233,16 @@ def _run_parser(pipeline) -> argparse.ArgumentParser:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--output", required=True, type=Path, help="Directory for JSONL checkpoints.")
-    parser.add_argument("--model", default=None, help="Model name. Defaults to SYNTHESIS_MODEL.")
+    parser.add_argument(
+        "--model", default=None,
+        help=f"Model name. Uses SYNTHESIS_MODEL, then {DEFAULT_DEEPSEEK_MODEL} for DeepSeek.",
+    )
     parser.add_argument(
         "--env-file", type=Path, default=None,
         help="Read key/model settings from this file, or .env in the current directory if present. Environment wins.",
     )
     parser.add_argument(
-        "--provider", choices=("auto", *PROVIDER_DEFAULTS), default="auto",
+        "--provider", choices=("auto", *PROVIDER_DEFAULTS), default="deepseek",
         help="Endpoint and key preset; auto uses --base-url or OPENAI_BASE_URL and detects known hosts.",
     )
     parser.add_argument(
@@ -258,8 +268,8 @@ def _run_parser(pipeline) -> argparse.ArgumentParser:
         help="API field used for the output token budget.",
     )
     parser.add_argument(
-        "--thinking", choices=("default", "on", "off"), default="default",
-        help="DeepSeek/OpenRouter thinking toggle; 'default' omits the API field.",
+        "--thinking", choices=("default", "on", "off"), default=argparse.SUPPRESS,
+        help="Defaults to on for DeepSeek/OpenRouter, server default for OpenAI. 'default' omits the API field.",
     )
     parser.add_argument("--timeout", type=positive_float, default=120, help="HTTP timeout in seconds.")
     parser.add_argument(

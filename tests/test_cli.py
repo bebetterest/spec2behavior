@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 import httpx
@@ -6,6 +7,26 @@ import pytest
 
 from synthesis.cli import main
 from synthesis.client import ChatClient
+
+
+def _generation_seed(body):
+    line = body["messages"][0]["content"].splitlines()[0]
+    assert line.startswith("Random seed: ")
+    seed = line.removeprefix("Random seed: ")
+    assert re.fullmatch(r"[0-9a-f]{32}", seed)
+    assert "seed" not in body
+    assert "generation_seed" not in body
+    return seed
+
+
+def _assert_new_generation_matches_preview(preview, actual):
+    preview_seed = _generation_seed(preview)
+    actual_seed = _generation_seed(actual)
+    assert actual_seed != preview_seed
+    assert json.dumps(actual, sort_keys=True).replace(actual_seed, "<seed>") == (
+        json.dumps(preview, sort_keys=True).replace(preview_seed, "<seed>")
+    )
+    return actual_seed
 
 
 @pytest.fixture(autouse=True)
@@ -90,6 +111,97 @@ def test_list_includes_builtin_pipelines(capsys):
     assert "prompts" not in names
 
 
+def test_inapplicable_excerpt_keeps_reason_without_creating_training_rows(tmp_path, monkeypatch):
+    source = tmp_path / "glossary.md"
+    source.write_text("# Record\n\nA record is one measurement.\n", encoding="utf-8")
+    output = tmp_path / "out"
+    raw = json.dumps({"not_applicable": "The glossary gives no behavioral boundary to test."})
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(200, json={"choices": [{
+            "message": {"content": raw}, "finish_reason": "stop",
+        }]})
+
+    monkeypatch.setattr("synthesis.cli.ChatClient", lambda **kwargs: ChatClient(
+        **kwargs, transport=httpx.MockTransport(handler), trust_env=False,
+    ))
+    command = ["run", "pressure", "--source", str(source), "--output", str(output),
+               "--provider", "deepseek", "--model", "demo", "--api-key", "test-key"]
+    assert main(command) == 1
+    errors = [json.loads(line) for line in (output / "errors.jsonl").read_text().splitlines()]
+    assert len(errors) == 1
+    assert errors[0]["error"] == "template not applicable: The glossary gives no behavioral boundary to test."
+    assert errors[0]["raw"] == raw
+    assert not (output / "jobs.jsonl").exists()
+    assert not (output / "train.jsonl").read_text().strip()
+    api = [json.loads(line) for line in (output / "api.jsonl").read_text().splitlines()]
+    assert [event["event"] for event in api] == ["request", "response"]
+    assert json.loads(api[-1]["body"])["choices"][0]["message"]["content"] == raw
+    first_seed = _generation_seed(api[0]["body"])
+    assert api[0]["generation_seed"] == api[1]["generation_seed"] == errors[0]["generation_seed"] == first_seed
+
+    assert main(command) == 1
+    assert len(requests) == 1
+    assert main(command + ["--retry-errors"]) == 1
+    assert len(requests) == 2
+    assert len((output / "errors.jsonl").read_text().splitlines()) == 2
+    assert not (output / "train.jsonl").read_text().strip()
+    api = [json.loads(line) for line in (output / "api.jsonl").read_text().splitlines()]
+    assert len(api) == 4
+    assert len({event["call_id"] for event in api}) == 2
+    second_seed = _generation_seed(api[2]["body"])
+    assert second_seed != first_seed
+    assert api[2]["generation_seed"] == api[3]["generation_seed"] == second_seed
+    errors = [json.loads(line) for line in (output / "errors.jsonl").read_text().splitlines()]
+    assert [error["generation_seed"] for error in errors] == [first_seed, second_seed]
+
+
+@pytest.mark.parametrize("status,history,retry_flags", [
+    (503, "failures.jsonl", []),
+    (401, "errors.jsonl", ["--retry-errors"]),
+])
+def test_retrying_a_failed_job_creates_and_records_a_new_seed(
+    tmp_path, monkeypatch, status, history, retry_flags,
+):
+    source = tmp_path / "policy.md"
+    source.write_text("# Rule\n\nFollow the rule.\n", encoding="utf-8")
+    output = tmp_path / "out"
+    sent = []
+
+    def handler(request):
+        sent.append(json.loads(request.content))
+        if len(sent) == 1:
+            return httpx.Response(status, text="upstream failure")
+        return httpx.Response(200, json={"choices": [{
+            "message": {"content": '{"reflection":"Follow the rule."}'}, "finish_reason": "stop",
+        }]})
+
+    monkeypatch.setattr("synthesis.cli.ChatClient", lambda **kwargs: ChatClient(
+        **kwargs, transport=httpx.MockTransport(handler), trust_env=False,
+    ))
+    command = ["run", "reflection", "--source", str(source), "--output", str(output),
+               "--api-key", "test-key", "--max-retries", "0"]
+    assert main(command) == 1
+    first_seed = _generation_seed(sent[0])
+    failure = json.loads((output / history).read_text())
+    assert failure["generation_seed"] == first_seed
+    assert not (output / "train.jsonl").read_text().strip()
+    saved_history = (output / history).read_bytes()
+
+    assert main(command + retry_flags) == 0
+    assert len(sent) == 2
+    second_seed = _generation_seed(sent[1])
+    assert second_seed != first_seed
+    assert (output / history).read_bytes() == saved_history
+    job = json.loads((output / "jobs.jsonl").read_text())
+    row = json.loads((output / "train.jsonl").read_text())
+    assert job["generation_seed"] == row["meta"]["generation_seed"] == second_seed
+    api = [json.loads(line) for line in (output / "api.jsonl").read_text().splitlines()]
+    assert [event["generation_seed"] for event in api] == [first_seed] * 3 + [second_seed] * 2
+
+
 def test_dry_run_prints_a_request_and_writes_nothing(tmp_path: Path, capsys):
     source = tmp_path / "policy.md"
     source.write_text("# Part\n\n## Rule {#rule}\n\nFollow the rule.\n", encoding="utf-8")
@@ -113,8 +225,45 @@ def test_dry_run_prints_a_request_and_writes_nothing(tmp_path: Path, capsys):
     body = json.loads(captured.err.split("request body:\n", 1)[1])
     assert body["max_tokens"] == 16384
     assert body["temperature"] == 1.0
-    assert "thinking" not in body
+    assert body["model"] == "deepseek-flash"
+    assert body["thinking"] == {"type": "enabled"}
     assert "Write 1 pair." in body["messages"][0]["content"]
+    _generation_seed(body)
+
+
+def test_default_run_uses_deepseek_flash_with_thinking(tmp_path, monkeypatch, capsys):
+    source = tmp_path / "policy.md"
+    source.write_text("# Rule\n\nFollow the rule.\n", encoding="utf-8")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "deepseek-test-key")
+    monkeypatch.setenv("OPENAI_BASE_URL", "https://unrelated.example/v1")
+    sent = []
+
+    def handler(request):
+        assert str(request.url) == "https://api.deepseek.com/chat/completions"
+        assert request.headers["Authorization"] == "Bearer deepseek-test-key"
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json={"choices": [{
+            "message": {"content": '{"reflection":"Follow the rule."}'}, "finish_reason": "stop",
+        }]})
+
+    monkeypatch.setattr("synthesis.cli.ChatClient", lambda **kwargs: ChatClient(
+        **kwargs, transport=httpx.MockTransport(handler), trust_env=False,
+    ))
+    command = ["run", "reflection", "--source", str(source), "--output", str(tmp_path / "out")]
+    assert main(command + ["--dry-run"]) == 0
+    preview = json.loads(capsys.readouterr().err.split("request body:\n", 1)[1])
+    assert preview["model"] == "deepseek-flash"
+    assert preview["thinking"] == {"type": "enabled"}
+    assert main(command) == 0
+    assert len(sent) == 1
+    _assert_new_generation_matches_preview(preview, sent[0])
+    trace_path = tmp_path / "out" / "api.jsonl"
+    saved_trace = trace_path.read_bytes()
+    with trace_path.open("ab") as handle:
+        handle.write(b'{"event":"response","body":"\xe4\xb8')
+    assert main(command) == 0
+    assert len(sent) == 1
+    assert trace_path.read_bytes() == saved_trace
 
 
 def test_dry_run_can_switch_token_field_or_use_provider_defaults(tmp_path, capsys):
@@ -179,10 +328,27 @@ def test_provider_thinking_matches_preview_and_saves_only_final_content(
         assert "reasoning" not in preview
     assert "extra_body" not in preview
     assert main(command) == 0
-    assert sent == [preview]
+    assert len(sent) == 1
+    seed = _assert_new_generation_matches_preview(preview, sent[0])
     row = json.loads((output / "train.jsonl").read_text())
     assert row["messages"][-1] == {"role": "assistant", "content": json.loads(raw)["reflection"]}
+    assert row["meta"]["generation_seed"] == seed
+    assert seed not in json.dumps(row["messages"])
+    job = json.loads((output / "jobs.jsonl").read_text())
+    assert job["generation_seed"] == seed
     assert "Teacher reasoning" not in (output / "jobs.jsonl").read_text()
+    assert "Teacher reasoning" not in (output / "train.jsonl").read_text()
+    api = [json.loads(line) for line in (output / "api.jsonl").read_text().splitlines()]
+    assert [event["event"] for event in api] == ["request", "response"]
+    assert api[0]["body"] == sent[0]
+    assert api[0]["generation_seed"] == api[1]["generation_seed"] == seed
+    assert api[0]["call_id"] == api[1]["call_id"]
+    assert api[0]["job_id"] == api[1]["job_id"] == row["job_id"]
+    assert api[0]["pipeline"] == api[1]["pipeline"] == "reflection"
+    response = json.loads(api[1]["body"])
+    assert response["choices"][0]["message"]["reasoning_content"] == "Teacher reasoning, not training text."
+    assert response["choices"][0]["message"]["content"] == raw
+    assert "test-provider-key" not in (output / "api.jsonl").read_text()
 
 
 @pytest.mark.parametrize("provider,endpoint,key_env", [
@@ -239,7 +405,7 @@ def test_auto_mode_detects_provider_from_the_url(tmp_path, monkeypatch, use_envi
         **kwargs, transport=httpx.MockTransport(handler), trust_env=False,
     ))
     command = ["run", "reflection", "--source", str(source), "--output", str(tmp_path / "out"),
-               "--model", "deepseek/deepseek-v3.2", "--thinking", "off"]
+               "--provider", "auto", "--model", "deepseek/deepseek-v3.2", "--thinking", "off"]
     if not use_environment:
         command += ["--base-url", url]
     assert main(command) == 0
@@ -263,7 +429,8 @@ def test_auto_mode_preserves_the_legacy_generic_key(tmp_path, monkeypatch):
         **kwargs, transport=httpx.MockTransport(handler), trust_env=False,
     ))
     assert main(["run", "reflection", "--source", str(source), "--output", str(tmp_path / "out"),
-                 "--base-url", "https://api.deepseek.com", "--model", "demo", "--thinking", "on"]) == 0
+                 "--provider", "auto", "--base-url", "https://api.deepseek.com",
+                 "--model", "demo", "--thinking", "on"]) == 0
     assert sent[0]["thinking"] == {"type": "enabled"}
 
 

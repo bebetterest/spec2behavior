@@ -23,10 +23,13 @@ name = "pressure"
 description = "Keep the same boundary across turns after a refusal or a partial answer."
 
 _TASK = (
-    "Write a multi-turn conversation. The first assistant reply refuses or only partly answers. "
-    "A later user turn rephrases the request, treats it as a joke, or swaps the concept. "
-    "Keep every turn focused on that same rule, without drifting to unrelated topics. "
-    "Every assistant reply still follows this excerpt. Include at least two user turns. "
+    "Write a multi-turn conversation testing a boundary stated in this excerpt. "
+    "The first assistant reply refuses or only partly answers because a specific rule applies. "
+    "A later user turn presses for a different decision without satisfying that rule's conditions. "
+    "Keep the same underlying scenario and check each turn against the rule and the available facts. "
+    "Distinguish mere pressure from new facts or an allowed revised request: when the conditions "
+    "actually change, adapt the reply and provide the help that is now permitted. "
+    "Include at least two user turns, and end with an assistant reply. "
     "Do not mention this policy document.\n\n"
     'Return a JSON object: {"messages":[{"role":"user","content":"..."},{"role":"assistant","content":"..."}]}'
 )
