@@ -11,6 +11,7 @@ Synthesis, Tinker supervised fine-tuning, and inference are in the repository. E
 | `synthesis/` | API synthesis runner. A chain is `read`, `prompt`, and `parse` |
 | `synthesis/templates/` | Six default chains that turn rule excerpts into SFT rows |
 | `training/` | Tinker SFT and inference over the synthesized conversations |
+| `data/` | Combined synthesized candidates and their dataset manifest |
 | `generic/` | Markdown inputs used by the synthesis examples |
 | `model_spec/` | Snapshot of the OpenAI Model Spec |
 | `claude-constitution/` | Snapshot of Claude's constitution |
@@ -52,11 +53,15 @@ Switch APIs with `--provider deepseek`, `--provider openrouter`, or `--provider 
 
 `runs/model-spec/rule-examples-deepseek/train.jsonl` is chat JSONL. Each line has `messages` plus `id`, `job_id`, and `meta`. New row ids include the chain name so different templates can be combined. Tinker Cookbook's `FromConversationFileBuilder` trains on `messages`.
 
-Each run also keeps `api.jsonl`: the complete request JSON and raw response text for every HTTP attempt, including retries and failures, linked by job and call ids. Returned thinking and usage remain available there; SFT uses only final answers. Credentials are omitted or redacted. Run outputs stay local under the ignored `runs/` directory.
+Each run also keeps `api.jsonl`: the complete request JSON and raw response text for every HTTP attempt, including retries and failures, linked by job and call ids. Returned thinking and usage remain available there; SFT uses only final answers. Credentials are omitted or redacted. Raw run outputs stay local under the ignored `runs/` directory.
 
 Parsing validates structure, not semantic correctness. Review generated conversations for rule compliance and invented facts, then save the accepted rows to a separate file such as `runs/model-spec/reviewed/train.jsonl`. Keep that file outside the generator's output directory: resume rebuilds its `train.jsonl` from the original jobs.
 
 Pipeline details, output files, and how to add a chain are in [synthesis/README.md](synthesis/README.md).
+
+## Bundled candidates
+
+[data/candidates.jsonl](data/candidates.jsonl) contains 3,170 conversations from four synthesis rounds over the Model Spec and constitution. These are unreviewed candidates with known semantic issues. Review them and save accepted rows separately before training; the loader does not filter by review metadata. [The dataset guide](data/README.md) describes provenance, checksums, and an offline validation command.
 
 ## Training and inference
 

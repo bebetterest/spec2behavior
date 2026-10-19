@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "file": "candidates.jsonl",
+  "sha256": "a6f505546c03bb7101967bc224b3797b2b41f7ae45f835badb68b46e11a0e860",
+  "row_count": 3170,
+  "candidate_count": 2712,
+  "generation_round_count": 4,
+  "review_status": "unreviewed",
+  "semantic_review_complete": false,
+  "generation_code_commit": "d7c911c3dddf34a8d3e7a19298d04e08a458c769",
+  "request_settings": {
+    "provider": "deepseek",
+    "model": "deepseek-flash",
+    "thinking": "on",
+    "max_tokens": 16384,
+    "temperature": 1.0
+  },
+  "excerpt_settings": {
+    "max_portion_chars": 16000,
+    "rule_examples_pairs": 1
+  },
+  "source_sha256": {
+    "generic/model_spec.md": "938e580ddf05ad52ee2433606fb8d9f4d18b1c4ad8bed86232ab296df67aa107",
+    "generic/constitution.md": "467b56a949838163c0425237e1613a9fbca883934c426b8ff72f96a9ae71a6fc"
+  },
+  "row_counts_by_source": {
+    "generic/constitution.md": 1050,
+    "generic/model_spec.md": 2120
+  },
+  "row_counts_by_template": {
+    "chain_of_command": 453,
+    "correction": 461,
+    "pressure": 436,
+    "reflection": 454,
+    "rule_examples": 916,
+    "safe_completion": 450
+  },
+  "row_counts_by_form": {
+    "act": 458,
+    "correct": 461,
+    "generate": 458,
+    "partial": 450,
+    "pressure": 436,
+    "priority": 453,
+    "reflect": 454
+  },
+  "row_counts_by_round": {
+    "round-1": 795,
+    "round-2": 785,
+    "round-3": 796,
+    "round-4": 794
+  },
+  "rows_with_json_escaping_normalization": 12,
+  "split": null
+}
