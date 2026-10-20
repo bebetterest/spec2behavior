@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "file": "reviewed.jsonl",
+  "sha256": "71a1d22d856ac8380d4590f7435e4b052ee7f070e2b846637c70e387c046c670",
+  "row_count": 2829,
+  "candidate_count": 2417,
+  "source_candidates": "candidates.jsonl",
+  "source_candidates_sha256": "a6f505546c03bb7101967bc224b3797b2b41f7ae45f835badb68b46e11a0e860",
+  "source_candidate_rows": 3170,
+  "review_policy": "review_policy.md",
+  "review_policy_sha256": "3414bea7af41616b361eb903165e67cf8cf5ce9ce54e48e8a79e4cda3f8b791f",
+  "primary_review_prompt_sha256": "1cb321f5785d023a8947ab0baa3a3ce764caa2992111c4d9ff52b6b1b919579d",
+  "primary_reviewer": {
+    "provider": "deepseek",
+    "model": "deepseek-flash",
+    "thinking": "on",
+    "max_tokens": 16384
+  },
+  "review_status": "model_reviewed",
+  "review_scope": "all assistant targets in every original row",
+  "review_decisions": {
+    "accept": 2829,
+    "reject": 338,
+    "uncertain": 3
+  },
+  "excluded_rows": 341,
+  "exclusion_issue_counts": {
+    "authority": 27,
+    "context_missing": 18,
+    "factual_error": 19,
+    "form_mismatch": 2,
+    "formatting": 1,
+    "incomplete": 29,
+    "instruction_following": 72,
+    "over_refusal": 17,
+    "rule_fidelity": 57,
+    "uncertain": 3,
+    "unsafe_compliance": 3,
+    "unsupported_fact": 235
+  },
+  "row_counts_by_template": {
+    "chain_of_command": 400,
+    "correction": 434,
+    "pressure": 367,
+    "reflection": 415,
+    "rule_examples": 842,
+    "safe_completion": 371
+  },
+  "row_counts_by_source": {
+    "generic/constitution.md": 932,
+    "generic/model_spec.md": 1897
+  },
+  "row_counts_by_form": {
+    "act": 413,
+    "correct": 434,
+    "generate": 429,
+    "partial": 371,
+    "pressure": 367,
+    "priority": 400,
+    "reflect": 415
+  },
+  "row_counts_by_round": {
+    "round-1": 705,
+    "round-2": 702,
+    "round-3": 721,
+    "round-4": 701
+  },
+  "codex_adjudicated_rows": 82,
+  "messages_unchanged": true,
+  "source_sha256": {
+    "generic/model_spec.md": "938e580ddf05ad52ee2433606fb8d9f4d18b1c4ad8bed86232ab296df67aa107",
+    "generic/constitution.md": "467b56a949838163c0425237e1613a9fbca883934c426b8ff72f96a9ae71a6fc"
+  },
+  "split": null,
+  "human_certified": false,
+  "raw_review_records_included": false,
+  "limitations": [
+    "The generator and primary reviewer use the same model family.",
+    "Model-assisted review can miss defects; this is not human certification.",
+    "Target-model tokenization and training performance have not been evaluated."
+  ],
+  "targeted_second_pass": {
+    "reviewer": "deepseek-flash",
+    "selected_rows": 949,
+    "selection": "Provisional acceptances with instruction-authority, incomplete-deliverable, or deployment-assertion risk indicators.",
+    "prompt_sha256": "4b98297b5de72952bb3bd8b002a33c921fe0874c3ce500e63a7dc90d685d75b4",
+    "final_decisions": {
+      "accept": 932,
+      "reject": 17
+    }
+  }
+}

@@ -11,7 +11,7 @@ Synthesis, Tinker supervised fine-tuning, and inference are in the repository. E
 | `synthesis/` | API synthesis runner. A chain is `read`, `prompt`, and `parse` |
 | `synthesis/templates/` | Six default chains that turn rule excerpts into SFT rows |
 | `training/` | Tinker SFT and inference over the synthesized conversations |
-| `data/` | Combined synthesized candidates and their dataset manifest |
+| `data/` | Original candidates, reviewed SFT conversations, and provenance |
 | `generic/` | Markdown inputs used by the synthesis examples |
 | `model_spec/` | Snapshot of the OpenAI Model Spec |
 | `claude-constitution/` | Snapshot of Claude's constitution |
@@ -59,9 +59,9 @@ Parsing validates structure, not semantic correctness. Review generated conversa
 
 Pipeline details, output files, and how to add a chain are in [synthesis/README.md](synthesis/README.md).
 
-## Bundled candidates
+## Bundled data
 
-[data/candidates.jsonl](data/candidates.jsonl) contains 3,170 conversations from four synthesis rounds over the Model Spec and constitution. These are unreviewed candidates with known semantic issues. Review them and save accepted rows separately before training; the loader does not filter by review metadata. [The dataset guide](data/README.md) describes provenance, checksums, and an offline validation command.
+[data/candidates.jsonl](data/candidates.jsonl) preserves all 3,170 original conversations from four synthesis rounds over the Model Spec and constitution. [data/reviewed.jsonl](data/reviewed.jsonl) contains the accepted subset after semantic review, targeted checks, and selected Codex adjudication; accepted messages and IDs are unchanged. Use the reviewed file for SFT: the original candidates contain known defects, and the loader does not filter by review metadata. This is model-assisted curation, not human certification or evidence of training performance. [The dataset guide](data/README.md) describes the review criteria, provenance, checksums, and offline validation.
 
 ## Training and inference
 
@@ -72,7 +72,7 @@ pip install -e ".[train]"
 export TINKER_API_KEY=...
 
 python -m training sft \
-  --data runs/model-spec/reviewed/train.jsonl \
+  --data data/reviewed.jsonl \
   --log-dir logs/model-spec \
   --model Qwen/Qwen3-8B \
   --batch-size 1 \
@@ -84,7 +84,7 @@ Remove `--dry-run` to train. After training produces a sampler checkpoint:
 ```bash
 python -m training infer \
   --log-dir logs/model-spec \
-  --input runs/model-spec/reviewed/train.jsonl \
+  --input data/reviewed.jsonl \
   --output logs/model-spec/infer
 ```
 
