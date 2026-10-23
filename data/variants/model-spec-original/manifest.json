@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "collection": "model-spec-original",
+  "variant": "original",
+  "source": "model_spec/model_spec.md",
+  "source_sha256": "a52378c1ae7514b091162c17abd285365eddaf4066f70773f3ffe05453f94cab",
+  "upstream_version": "2026-08-18",
+  "generation_round_count": 4,
+  "request_settings": {
+    "provider": "deepseek",
+    "model": "deepseek-flash",
+    "thinking": "on",
+    "max_tokens": 16384,
+    "temperature": 1.0
+  },
+  "excerpt_settings": {
+    "max_portion_chars": 16000,
+    "rule_examples_pairs": 1
+  },
+  "files": {
+    "candidates.jsonl": {
+      "rows": 2121,
+      "sha256": "11bbf2d5428ef5fdb4801b883446e77f5b15b4a1d377bc7c5e62ded53fe70e03"
+    },
+    "reviewed.jsonl": {
+      "rows": 1909,
+      "sha256": "d47fa6c1aff3126d07521058cdbe0ae06ed47ec75285c211590f5c53e948b5e9"
+    }
+  },
+  "review_policy": "../../review_policy.md",
+  "review_policy_sha256": "3414bea7af41616b361eb903165e67cf8cf5ce9ce54e48e8a79e4cda3f8b791f",
+  "decisions": {
+    "accept": 1909,
+    "reject": 204,
+    "uncertain": 8
+  },
+  "row_counts_by_template": {
+    "rule_examples": 575,
+    "correction": 297,
+    "reflection": 282,
+    "pressure": 244,
+    "chain_of_command": 269,
+    "safe_completion": 242
+  },
+  "split": null,
+  "derivation": "Four independent synthesis rounds from the unchanged upstream snapshot; accepted conversations are selected without rewriting.",
+  "generation_code_commit": "9c5eec2c0b23cf7718159618bd9ac91e2f2d6b86",
+  "generation_code_sha256": {
+    "synthesis/__init__.py": "7f7c973e64823b9a3cf84d0a0228afbc1b47d3532d34c0089457e564b67a489c",
+    "synthesis/__main__.py": "a8ad4f8cfec00e6caa0bdac8e7398c6deb34c460d1f0c8fb93c49450deecaebe",
+    "synthesis/arguments.py": "39e1bdf10dd4f24e0d8ad5b2ef13488bcbfe413b6439861a67c79d8294d2cfe0",
+    "synthesis/cli.py": "9c2f66d5b4c34346847e61cb9b04984578fabf1fa676ca93f43f939832511c7f",
+    "synthesis/client.py": "55c5b9aeb50b37a7ac0a236771ab43ee05a1c97a6ae2cc03ef7798a0331617e4",
+    "synthesis/io.py": "6ac7ea1c02ed52b61477099d23bba45e2e811834b5bb07b853f898241061db8c",
+    "synthesis/jsonutil.py": "9413a1ceaf4ce81b7eefe5f7bacab441f706804e4dd922cb3143f37fa3c6afe2",
+    "synthesis/markdown_sections.py": "4a31e147f8e2cf7dd75493389b1ccbf266037aeca364c81f98041eb5e28df3da",
+    "synthesis/messages.py": "454f143022a10cc4e4e44af6763a8f8fddec3d493ee3b6158eaed5b892339636",
+    "synthesis/pipeline.py": "b2baa9217614560b9927f1c37af49cdb0e767da5a9272e185a26bd68165d30bd",
+    "synthesis/pipelines/__init__.py": "4df5644c7f509fca9bc13fbb36c422da76711821fa800c9017e9d4c94ccde241",
+    "synthesis/portions.py": "3352057b4fb7442367bdf94b021a7d0fbddded0f57389b80bbdacc265737ef24",
+    "synthesis/runner.py": "f0dab1271f23557c04eab2923d858459de1f255f2b246d7d9a9d7b8118b36e76",
+    "synthesis/template.py": "d99445165f593c202ea9658cf12d825f3d3abc1e2d4e532625e0ed053176ccbf",
+    "synthesis/templates/__init__.py": "140598deb6ea680235b47ef60a4f2bade3ebc19e16223b540dcae4342aefc88f",
+    "synthesis/templates/_common.py": "e4db4d6bc898435813f2363840ad209b9788872220f52b16b23845d2aaa3d00b",
+    "synthesis/templates/chain_of_command.py": "6751e7e35b7ed0d12632a9076da756eb622c3d50acf66595c6c4de542840982c",
+    "synthesis/templates/correction.py": "ac9595db1e11a12218f562579da3daa85f6fbd8016bedcbf4c8425d5a4e2195c",
+    "synthesis/templates/pressure.py": "dc733b71d79b23fc482229c0673004a4a7d5e44a12c1ecb5ba7cabd499f018e9",
+    "synthesis/templates/reflection.py": "0b7185b176baeed5ee4228189905d10de9428550fd168cb45a5e739212b49c04",
+    "synthesis/templates/rule_examples.py": "5e1b43b5200c2af7a5689c8da496375b5f340ce1ce68661fdb5dd202d91622ce",
+    "synthesis/templates/safe_completion.py": "f0964a8cf2fadc8d473d5acdcbe9f635769d3d709e387d8348f6611a7a2e85de",
+    "synthesis/types.py": "37fdb8d9291b86afb4c0dea24da330b2037330b6e475c37cfb6719e7a87a7c9e"
+  },
+  "semantic_review_prompt_sha256": "1cb321f5785d023a8947ab0baa3a3ce764caa2992111c4d9ff52b6b1b919579d",
+  "targeted_second_pass_policy_sha256": "4b98297b5de72952bb3bd8b002a33c921fe0874c3ce500e63a7dc90d685d75b4",
+  "review_verification_exclusions": {
+    "primary_unverified_rows": 7,
+    "targeted_unverified_rows": 0,
+    "decision": "uncertain; excluded from reviewed.jsonl"
+  }
+}

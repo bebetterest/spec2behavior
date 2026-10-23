@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "collections": {
+    "model-spec-generic": {
+      "source": "generic/model_spec.md",
+      "source_sha256": "938e580ddf05ad52ee2433606fb8d9f4d18b1c4ad8bed86232ab296df67aa107",
+      "variant": "generic",
+      "upstream_version": "2026-08-18",
+      "candidates": {
+        "path": "model-spec-generic/candidates.jsonl",
+        "rows": 2120,
+        "sha256": "fe6e8d3460712f8addb5964c4b9ccb77db4412217d48eadd21f112c6c8b48845",
+        "parent_file": "data/candidates.jsonl",
+        "parent_sha256": "a6f505546c03bb7101967bc224b3797b2b41f7ae45f835badb68b46e11a0e860"
+      },
+      "reviewed": {
+        "path": "model-spec-generic/reviewed.jsonl",
+        "rows": 1897,
+        "sha256": "56597cb4f383ca6ebb2ddfe9856be3f526c99b00fa6f681422ff01357f08f29c",
+        "parent_file": "data/reviewed.jsonl",
+        "parent_sha256": "71a1d22d856ac8380d4590f7435e4b052ee7f070e2b846637c70e387c046c670"
+      },
+      "manifest": "model-spec-generic/manifest.json"
+    },
+    "constitution-generic": {
+      "source": "generic/constitution.md",
+      "source_sha256": "467b56a949838163c0425237e1613a9fbca883934c426b8ff72f96a9ae71a6fc",
+      "variant": "generic",
+      "upstream_version": "2026-01-20",
+      "candidates": {
+        "path": "constitution-generic/candidates.jsonl",
+        "rows": 1050,
+        "sha256": "c17c9ea69a9cca9f421b49b1bf0e3e389bef4d871ab4c432e67f5b4789632877",
+        "parent_file": "data/candidates.jsonl",
+        "parent_sha256": "a6f505546c03bb7101967bc224b3797b2b41f7ae45f835badb68b46e11a0e860"
+      },
+      "reviewed": {
+        "path": "constitution-generic/reviewed.jsonl",
+        "rows": 932,
+        "sha256": "f131ad87b63f3cbc7d6c540465bea932ffb8f52f65cd1a8b0e7c8fbe2eac81a6",
+        "parent_file": "data/reviewed.jsonl",
+        "parent_sha256": "71a1d22d856ac8380d4590f7435e4b052ee7f070e2b846637c70e387c046c670"
+      },
+      "manifest": "constitution-generic/manifest.json"
+    },
+    "model-spec-original": {
+      "source": "model_spec/model_spec.md",
+      "source_sha256": "a52378c1ae7514b091162c17abd285365eddaf4066f70773f3ffe05453f94cab",
+      "variant": "original",
+      "upstream_version": "2026-08-18",
+      "candidates": {
+        "path": "model-spec-original/candidates.jsonl",
+        "rows": 2121,
+        "sha256": "11bbf2d5428ef5fdb4801b883446e77f5b15b4a1d377bc7c5e62ded53fe70e03"
+      },
+      "reviewed": {
+        "path": "model-spec-original/reviewed.jsonl",
+        "rows": 1909,
+        "sha256": "d47fa6c1aff3126d07521058cdbe0ae06ed47ec75285c211590f5c53e948b5e9"
+      },
+      "manifest": "model-spec-original/manifest.json"
+    },
+    "constitution-original": {
+      "source": "claude-constitution/20260120-constitution.md",
+      "source_sha256": "251440a71a9068dd43bfaab2b8694d6e2a4f519c403f1b9a70785f830d05f327",
+      "variant": "original",
+      "upstream_version": "2026-01-20",
+      "candidates": {
+        "path": "constitution-original/candidates.jsonl",
+        "rows": 1059,
+        "sha256": "c600cd7522eb9afaed3ef17b000a2e832d538f2f7b1cf776cff29074356ed7b1"
+      },
+      "reviewed": {
+        "path": "constitution-original/reviewed.jsonl",
+        "rows": 886,
+        "sha256": "8ac333425d1df783243329e67c7776ba99e133310103471ddc6cf42d35a9372b"
+      },
+      "manifest": "constitution-original/manifest.json"
+    }
+  },
+  "existing_generic_mixture": {
+    "candidates": "../candidates.jsonl",
+    "reviewed": "../reviewed.jsonl"
+  },
+  "generation_round_count": 4,
+  "split": null,
+  "note": "Choose collections explicitly. Original/generic counterparts share source material and are not held-out from each other."
+}

@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "collection": "constitution-generic",
+  "variant": "generic",
+  "source": "generic/constitution.md",
+  "source_sha256": "467b56a949838163c0425237e1613a9fbca883934c426b8ff72f96a9ae71a6fc",
+  "upstream_version": "2026-01-20",
+  "generation_round_count": 4,
+  "request_settings": {
+    "provider": "deepseek",
+    "model": "deepseek-flash",
+    "thinking": "on",
+    "max_tokens": 16384,
+    "temperature": 1.0
+  },
+  "excerpt_settings": {
+    "max_portion_chars": 16000,
+    "rule_examples_pairs": 1
+  },
+  "files": {
+    "candidates.jsonl": {
+      "rows": 1050,
+      "sha256": "c17c9ea69a9cca9f421b49b1bf0e3e389bef4d871ab4c432e67f5b4789632877",
+      "parent_file": "data/candidates.jsonl",
+      "parent_sha256": "a6f505546c03bb7101967bc224b3797b2b41f7ae45f835badb68b46e11a0e860"
+    },
+    "reviewed.jsonl": {
+      "rows": 932,
+      "sha256": "f131ad87b63f3cbc7d6c540465bea932ffb8f52f65cd1a8b0e7c8fbe2eac81a6",
+      "parent_file": "data/reviewed.jsonl",
+      "parent_sha256": "71a1d22d856ac8380d4590f7435e4b052ee7f070e2b846637c70e387c046c670"
+    }
+  },
+  "review_policy": "../../review_policy.md",
+  "split": null,
+  "derivation": "Exact row-line selection from the existing datasets; no regeneration or rewriting.",
+  "generation_code_commit": "d7c911c3dddf34a8d3e7a19298d04e08a458c769"
+}

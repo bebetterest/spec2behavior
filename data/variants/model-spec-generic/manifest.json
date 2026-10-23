@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "collection": "model-spec-generic",
+  "variant": "generic",
+  "source": "generic/model_spec.md",
+  "source_sha256": "938e580ddf05ad52ee2433606fb8d9f4d18b1c4ad8bed86232ab296df67aa107",
+  "upstream_version": "2026-08-18",
+  "generation_round_count": 4,
+  "request_settings": {
+    "provider": "deepseek",
+    "model": "deepseek-flash",
+    "thinking": "on",
+    "max_tokens": 16384,
+    "temperature": 1.0
+  },
+  "excerpt_settings": {
+    "max_portion_chars": 16000,
+    "rule_examples_pairs": 1
+  },
+  "files": {
+    "candidates.jsonl": {
+      "rows": 2120,
+      "sha256": "fe6e8d3460712f8addb5964c4b9ccb77db4412217d48eadd21f112c6c8b48845",
+      "parent_file": "data/candidates.jsonl",
+      "parent_sha256": "a6f505546c03bb7101967bc224b3797b2b41f7ae45f835badb68b46e11a0e860"
+    },
+    "reviewed.jsonl": {
+      "rows": 1897,
+      "sha256": "56597cb4f383ca6ebb2ddfe9856be3f526c99b00fa6f681422ff01357f08f29c",
+      "parent_file": "data/reviewed.jsonl",
+      "parent_sha256": "71a1d22d856ac8380d4590f7435e4b052ee7f070e2b846637c70e387c046c670"
+    }
+  },
+  "review_policy": "../../review_policy.md",
+  "split": null,
+  "derivation": "Exact row-line selection from the existing datasets; no regeneration or rewriting.",
+  "generation_code_commit": "d7c911c3dddf34a8d3e7a19298d04e08a458c769"
+}

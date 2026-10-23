@@ -1,5 +1,39 @@
 # SFT datasets
 
+Four separate source collections are available. Use the `reviewed.jsonl` in the selected collection for SFT; each adjacent `candidates.jsonl` preserves its complete convertible candidate set.
+
+| Collection | Source version | Candidate rows | Reviewed SFT rows |
+|---|---|---:|---:|
+| [Model Spec, generic](variants/model-spec-generic/reviewed.jsonl) | 2026-08-18 | 2,120 | **1,897** |
+| [Constitution, generic](variants/constitution-generic/reviewed.jsonl) | 2026-01-20 | 1,050 | **932** |
+| [Model Spec, original](variants/model-spec-original/reviewed.jsonl) | 2026-08-18 | 2,121 | **1,909** |
+| [Constitution, original](variants/constitution-original/reviewed.jsonl) | 2026-01-20 | 1,059 | **886** |
+
+[variants/manifest.json](variants/manifest.json) indexes their paths, source versions, counts and checksums. The two generic collections are exact row-line selections from the existing mixture, with unchanged ids, messages and metadata. The two original collections were synthesized in four rounds from the unchanged upstream snapshots, using the same six templates, `deepseek-flash`, thinking on, temperature 1.0, a 16,384-token output budget, and the same row-level semantic review policy plus targeted second-pass checks. Original author, brand and identity wording remains in those source excerpts; generated factual self-descriptions still require support in the saved inputs.
+
+No new collection is automatically merged into the existing mixture or used for training. To select one explicitly:
+
+```bash
+python -m training sft \
+  --data data/variants/model-spec-original/reviewed.jsonl \
+  --log-dir logs/model-spec-original-check \
+  --model Qwen/Qwen3-8B \
+  --batch-size 1 \
+  --dry-run
+```
+
+When partitioning data, keep aligned original/generic excerpts and all their generated variants together. These four collections are not independent held-out datasets. Full requests, replies, thinking, errors, review evidence, exclusions and runtime records remain local under ignored run directories.
+
+## Review of original-source collections
+
+The two original-source collections contain 3,180 convertible candidate conversations from four synthesis rounds. Review retained **2,795**, rejected **343**, and excluded **42 uncertain** rows. A targeted second pass examined 948 provisional acceptances. Codex independently inspected all 26 model second-pass nonacceptances and restored four false rejections; seven recorded Codex adjudications also cover additional factual and authority checks.
+
+The uncertain exclusions include 36 rows whose primary reviews and two whose required second-pass reviews remained unverifiable after bounded reassessment. These are verification exclusions, not claims that the conversations are necessarily wrong. Candidate data and failed review evidence remain available. Each collection manifest records its decision totals and verification exclusions.
+
+Accepted messages and ids are unchanged. Twenty-eight generation replies needed only JSON whitespace-escaping normalization before conversion; their parsed field values and original API replies were preserved. The same [review policy](review_policy.md) applies to all collections. This is model-assisted curation with selected Codex adjudication, not human certification or evidence of model improvement.
+
+## Existing generic-source mixture
+
 Use [reviewed.jsonl](reviewed.jsonl) for SFT: it contains **2,829 accepted conversations**. [candidates.jsonl](candidates.jsonl) preserves all **3,170 original conversations**, including excluded examples. The training loader reads every row in the selected file; it does not filter by `meta.review_status`.
 
 Both files come from four synthesis rounds over [the Model Spec](../generic/model_spec.md) and [the constitution](../generic/constitution.md). Generation used the DeepSeek API with `deepseek-flash`, thinking on, and a 16,384-token output budget. Each excerpt/template combination was requested once per round; `rule_examples` exports both `generate` and `act` conversations.
