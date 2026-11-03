@@ -1,5 +1,7 @@
 # SFT datasets
 
+The four conversation/rubric **test collections** are documented separately in [evaluation/](evaluation/README.md). The files below are SFT training data.
+
 Four separate source collections are available. Use the `reviewed.jsonl` in the selected collection for SFT; each adjacent `candidates.jsonl` preserves its complete convertible candidate set.
 
 | Collection | Source version | Candidate rows | Reviewed SFT rows |

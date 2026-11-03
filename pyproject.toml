@@ -7,19 +7,32 @@ requires-python = ">=3.11"
 dependencies = ["httpx>=0.27", "python-dotenv>=1.0"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "pydantic>=2.8,<3"]
+evalgen = ["pydantic>=2.8,<3"]
 train = ["tinker-cookbook>=0.5"]
+eval = [
+    "tinker==0.34.0",
+    "tinker-cookbook==0.5.7",
+    "inspect-ai==0.3.282",
+    "inspect-evals==0.25.0",
+]
 
 [project.scripts]
 spec2behavior-synthesize = "synthesis.cli:main"
 spec2behavior-train = "training.cli:main"
+spec2behavior-eval = "evaluation.cli:main"
+spec2behavior-build-evals = "evaluation.builder.cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["synthesis*", "training*"]
+include = ["synthesis*", "training*", "evaluation*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.setuptools.package-data]
+"evaluation" = ["README.md", "config.example.json", "rubric_only_prompt.md"]
+"evaluation.builder" = ["config.example.json", "config.full.json", "README.md"]

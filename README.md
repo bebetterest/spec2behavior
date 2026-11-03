@@ -2,7 +2,7 @@
 
 Spec2Behavior synthesizes training data and fine-tunes models from written behavioral specifications, using model specs and constitutions as sources and [Tinker](https://tinker-docs.thinkingmachines.ai/) for training.
 
-Synthesis, Tinker supervised fine-tuning, and inference are in the repository. Evaluation against the spec is next.
+Synthesis, Tinker supervised fine-tuning, inference, and upstream Inspect AI evaluation are in the repository.
 
 ## Layout
 
@@ -11,7 +11,8 @@ Synthesis, Tinker supervised fine-tuning, and inference are in the repository. E
 | `synthesis/` | API synthesis runner. A chain is `read`, `prompt`, and `parse` |
 | `synthesis/templates/` | Six default chains that turn rule excerpts into SFT rows |
 | `training/` | Tinker SFT and inference over the synthesized conversations |
-| `data/` | Original candidates, reviewed SFT conversations, and provenance |
+| `evaluation/` | Upstream Model Spec, XSTest and StrongREJECT comparisons, overlap screening and cost preparation |
+| `data/` | SFT candidates, reviewed conversations, four evaluation collections, and provenance |
 | `generic/` | Markdown inputs used by the synthesis examples |
 | `model_spec/` | Snapshot of the OpenAI Model Spec |
 | `claude-constitution/` | Snapshot of Claude's constitution |
@@ -102,4 +103,16 @@ pip install -e ".[dev]"
 
 `python -m synthesis` also works from the repository root when its dependencies are installed.
 
-Installation also provides `spec2behavior-synthesize` and `spec2behavior-train`, equivalent to `python -m synthesis` and `python -m training`.
+Installation also provides `spec2behavior-synthesize`, `spec2behavior-train`, `spec2behavior-eval`, and `spec2behavior-build-evals`, equivalent to `python -m synthesis`, `python -m training`, `python -m evaluation`, and `python -m evaluation.builder`.
+
+For base/SFT comparisons, see [evaluation](evaluation/README.md). Model Spec defaults to rubric-only grading; one base can be compared with multiple named SFT checkpoints. Use its isolated environment and `prepare` command to download pinned public assets, screen overlap, and review the judge, sampling and uncached cost estimates before any paid inference.
+
+## Evaluation datasets
+
+[Four fixed test collections](data/evaluation/README.md) contain **938 conversation/rubric records**: OpenAI Model Spec original **587**, Model Spec generic **194**, Claude Constitution original **71**, and Constitution generic **86**. The official set targets the 2025-12-18 Model Spec; the generic Model Spec source is 2026-08-18. Synthetic cases have explicit source-grounded model/Codex review, not independent human certification. These are separate from SFT data.
+
+Verify their counts and checksums offline with `python -m evaluation.datasets`. [The manifest](data/evaluation/manifest.json) records portable paths, versions, provenance and checksums. Requests, replies, decisions and runtime records remain local.
+
+## Generate evaluation data
+
+[The evaluation builder](evaluation/builder/README.md) constructs source-grounded conversation/rubric candidates for the other three spec collections, with source review, independently authored probes, bounded revision, SFT-overlap screening and explicit reviewed export. Its default configuration is a six-case small-sample run. Raw API evidence and review records remain under ignored local directories.
