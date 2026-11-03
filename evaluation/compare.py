@@ -64,7 +64,8 @@ def compare_run(prepared, run_dir, output):
               "baseline": "base", "model_spec_grading": mode, "benchmarks": {},
               "limitations": ["Intervals resample matched item ids, not models or judge runs; they exclude judge/decoding variability and base-model pretraining contamination uncertainty.",
                               "Paired views exclude invalid judge outputs and target errors; coverage is reported. Inspect metrics retain failed-critique score 0 for Model Spec.",
-                              "The flagged-excluded view is auxiliary and does not certify semantic independence. No combined benchmark average is defined."]}
+                              "The flagged-excluded view is auxiliary and does not certify semantic independence. No combined benchmark average is defined.",
+                              "Section-id checks are reported separately from JSON validity; the upstream parser does not enforce equality, so identifier mismatches do not silently change scores or paired coverage."]}
     for benchmark in plan["lock"]["dataset_counts"]:
         values, details, metrics = {}, {}, {}
         slices = {r["id"]: r.get("metadata") or {} for r in samples[benchmark]}
@@ -87,7 +88,8 @@ def compare_run(prepared, run_dir, output):
             metrics[target] = log.results.model_dump(mode="json") if log.results else None
             counts = {"status": log.status, "logged_samples": len(log.samples or []), "target_errors": 0,
                       "judge_errors": 0, "judge_invalid": 0, "empty_final_answers": 0, "length_terminated": 0, "renderer_parse_failures": 0,
-                      "judge_calls": 0, "judge_empty_answers": 0, "judge_length_terminated": 0, "judge_parse_failures": 0}
+                      "judge_calls": 0, "judge_empty_answers": 0, "judge_length_terminated": 0, "judge_parse_failures": 0,
+                      "judge_section_id_checked": 0, "judge_section_mismatch": 0}
             scored = {}
             for sample in log.samples or []:
                 if sample.epoch != 1 or sample.id in scored:
@@ -109,6 +111,16 @@ def compare_run(prepared, run_dir, output):
                             counts["judge_length_terminated"] += int(any(s["stop_reason"] == "length" for s in sequences))
                             counts["judge_parse_failures"] += int(any(not s["parse_success"] for s in sequences))
                 sample_scores = list((sample.scores or {}).values())
+                if benchmark == "model_spec" and sample_scores and not sample.error:
+                    expected_section = slices.get(sample.id, {}).get("section_id")
+                    critiques = (sample_scores[0].metadata or {}).get("critiques")
+                    if expected_section is not None and critiques:
+                        counts["judge_section_id_checked"] += 1
+                        counts["judge_section_mismatch"] += int(any(
+                            critique.get("section_id") != expected_section for critique in critiques
+                        ))
+                # Keep the upstream score and pairing rules. Identifier drift is
+                # a diagnostic, separate from schema/parse failure or rescoring.
                 value = value_for_pair(benchmark, sample_scores[0]) if sample_scores and not sample.error else None
                 if value is None:
                     counts["judge_invalid"] += int(sample.error is None)

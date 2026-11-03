@@ -1,0 +1,356 @@
+{
+  "schema_version": 1,
+  "kind": "aggregate_policy_evaluation",
+  "review_status": "automatic_scores_with_known_judge_errors",
+  "primary_scores_changed": false,
+  "score_validity_established": false,
+  "model_count": 13,
+  "benchmark_count": 4,
+  "metric_rows": 52,
+  "samples_per_model": 938,
+  "model_item_results": 12194,
+  "new_model_item_results": 4563,
+  "reused_official_model_item_results": 7631,
+  "new_physical_model_calls": 9126,
+  "repository_revision_used": "20c1bc8f384fa62244b2624fd1a2dd7d772209a4",
+  "published_date": "2026-11-04",
+  "date_timezone": "Asia/Shanghai",
+  "collection_dates": {
+    "reused_official": "2026-10-24",
+    "new_synthetic": "2026-11-03"
+  },
+  "base_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16",
+  "models": {
+    "base": {
+      "kind": "unadapted_vendor_base",
+      "training_collection": null,
+      "batch_size": null
+    },
+    "model-spec-generic-b32": {
+      "kind": "lora_sft",
+      "training_collection": "model-spec-generic",
+      "batch_size": 32,
+      "training_rows": 1897,
+      "optimizer_steps": 60,
+      "training_data": {
+        "path": "data/variants/model-spec-generic/reviewed.jsonl",
+        "sha256": "56597cb4f383ca6ebb2ddfe9856be3f526c99b00fa6f681422ff01357f08f29c"
+      }
+    },
+    "model-spec-generic-b16": {
+      "kind": "lora_sft",
+      "training_collection": "model-spec-generic",
+      "batch_size": 16,
+      "training_rows": 1897,
+      "optimizer_steps": 119,
+      "training_data": {
+        "path": "data/variants/model-spec-generic/reviewed.jsonl",
+        "sha256": "56597cb4f383ca6ebb2ddfe9856be3f526c99b00fa6f681422ff01357f08f29c"
+      }
+    },
+    "model-spec-generic-b8": {
+      "kind": "lora_sft",
+      "training_collection": "model-spec-generic",
+      "batch_size": 8,
+      "training_rows": 1897,
+      "optimizer_steps": 238,
+      "training_data": {
+        "path": "data/variants/model-spec-generic/reviewed.jsonl",
+        "sha256": "56597cb4f383ca6ebb2ddfe9856be3f526c99b00fa6f681422ff01357f08f29c"
+      }
+    },
+    "constitution-generic-b32": {
+      "kind": "lora_sft",
+      "training_collection": "constitution-generic",
+      "batch_size": 32,
+      "training_rows": 932,
+      "optimizer_steps": 30,
+      "training_data": {
+        "path": "data/variants/constitution-generic/reviewed.jsonl",
+        "sha256": "f131ad87b63f3cbc7d6c540465bea932ffb8f52f65cd1a8b0e7c8fbe2eac81a6"
+      }
+    },
+    "constitution-generic-b16": {
+      "kind": "lora_sft",
+      "training_collection": "constitution-generic",
+      "batch_size": 16,
+      "training_rows": 932,
+      "optimizer_steps": 59,
+      "training_data": {
+        "path": "data/variants/constitution-generic/reviewed.jsonl",
+        "sha256": "f131ad87b63f3cbc7d6c540465bea932ffb8f52f65cd1a8b0e7c8fbe2eac81a6"
+      }
+    },
+    "constitution-generic-b8": {
+      "kind": "lora_sft",
+      "training_collection": "constitution-generic",
+      "batch_size": 8,
+      "training_rows": 932,
+      "optimizer_steps": 117,
+      "training_data": {
+        "path": "data/variants/constitution-generic/reviewed.jsonl",
+        "sha256": "f131ad87b63f3cbc7d6c540465bea932ffb8f52f65cd1a8b0e7c8fbe2eac81a6"
+      }
+    },
+    "model-spec-original-b32": {
+      "kind": "lora_sft",
+      "training_collection": "model-spec-original",
+      "batch_size": 32,
+      "training_rows": 1909,
+      "optimizer_steps": 60,
+      "training_data": {
+        "path": "data/variants/model-spec-original/reviewed.jsonl",
+        "sha256": "d47fa6c1aff3126d07521058cdbe0ae06ed47ec75285c211590f5c53e948b5e9"
+      }
+    },
+    "model-spec-original-b16": {
+      "kind": "lora_sft",
+      "training_collection": "model-spec-original",
+      "batch_size": 16,
+      "training_rows": 1909,
+      "optimizer_steps": 120,
+      "training_data": {
+        "path": "data/variants/model-spec-original/reviewed.jsonl",
+        "sha256": "d47fa6c1aff3126d07521058cdbe0ae06ed47ec75285c211590f5c53e948b5e9"
+      }
+    },
+    "model-spec-original-b8": {
+      "kind": "lora_sft",
+      "training_collection": "model-spec-original",
+      "batch_size": 8,
+      "training_rows": 1909,
+      "optimizer_steps": 239,
+      "training_data": {
+        "path": "data/variants/model-spec-original/reviewed.jsonl",
+        "sha256": "d47fa6c1aff3126d07521058cdbe0ae06ed47ec75285c211590f5c53e948b5e9"
+      }
+    },
+    "constitution-original-b32": {
+      "kind": "lora_sft",
+      "training_collection": "constitution-original",
+      "batch_size": 32,
+      "training_rows": 886,
+      "optimizer_steps": 28,
+      "training_data": {
+        "path": "data/variants/constitution-original/reviewed.jsonl",
+        "sha256": "8ac333425d1df783243329e67c7776ba99e133310103471ddc6cf42d35a9372b"
+      }
+    },
+    "constitution-original-b16": {
+      "kind": "lora_sft",
+      "training_collection": "constitution-original",
+      "batch_size": 16,
+      "training_rows": 886,
+      "optimizer_steps": 56,
+      "training_data": {
+        "path": "data/variants/constitution-original/reviewed.jsonl",
+        "sha256": "8ac333425d1df783243329e67c7776ba99e133310103471ddc6cf42d35a9372b"
+      }
+    },
+    "constitution-original-b8": {
+      "kind": "lora_sft",
+      "training_collection": "constitution-original",
+      "batch_size": 8,
+      "training_rows": 886,
+      "optimizer_steps": 111,
+      "training_data": {
+        "path": "data/variants/constitution-original/reviewed.jsonl",
+        "sha256": "8ac333425d1df783243329e67c7776ba99e133310103471ddc6cf42d35a9372b"
+      }
+    }
+  },
+  "collections": {
+    "model-spec-original": {
+      "path": "data/evaluation/model-spec-original.jsonl",
+      "rows": 587,
+      "sha256": "c6d251a1e7f57e94aff13d3234d93a273be89ec5dd30185eca6bcc20e7193bca",
+      "source_version": "2025-12-18",
+      "origin": "upstream"
+    },
+    "model-spec-generic": {
+      "path": "data/evaluation/model-spec-generic.jsonl",
+      "rows": 194,
+      "sha256": "1c2ad8017206eb67533aa157a5ff4d288c2735ec20c9feb0271d553c2857fdaf",
+      "source_version": "2026-08-18",
+      "origin": "synthetic_reviewed"
+    },
+    "constitution-original": {
+      "path": "data/evaluation/constitution-original.jsonl",
+      "rows": 71,
+      "sha256": "325348822a026d369b743df1f74016683caad0427b2ceedc6e5a792f23378243",
+      "source_version": "2026-01-20",
+      "origin": "synthetic_reviewed"
+    },
+    "constitution-generic": {
+      "path": "data/evaluation/constitution-generic.jsonl",
+      "rows": 86,
+      "sha256": "42af140593af8dfde3cf53e37bee05bf2d33527243bf15744713b266d3fa273f",
+      "source_version": "2026-01-20",
+      "origin": "synthetic_reviewed"
+    }
+  },
+  "sft": {
+    "learning_rate": 0.001,
+    "lora_rank": 64,
+    "num_epochs": 1,
+    "batch_sizes": [
+      32,
+      16,
+      8
+    ],
+    "optimizer": "dimuon",
+    "optimizer_version": 1,
+    "beta1": 0.9,
+    "grad_clip_norm": 0.0,
+    "lr_schedule": "linear",
+    "max_length": 32768,
+    "shuffle_seed": 0,
+    "drop_last": false,
+    "loss_fn": "cross_entropy",
+    "train_on_what": "all_assistant_messages",
+    "reduction": "mean",
+    "eval_size": 0
+  },
+  "evaluation": {
+    "grading": "rubric-only",
+    "scale": [
+      1,
+      7
+    ],
+    "pass_at_least": 6,
+    "samples_per_item": 1,
+    "judge_samples_per_answer": 1,
+    "renderer_date": "2026-10-24",
+    "target_renderer": "nemotron3_ultra_preserve_thinking",
+    "judge_model": "openai/gpt-oss-120b:peft:131072",
+    "judge_renderer": "gpt_oss_low_reasoning",
+    "target_decoding": {
+      "temperature": 0.0,
+      "top_p": 1.0,
+      "seed": 20261020,
+      "max_tokens": 8192,
+      "context_window": 65536
+    },
+    "judge_decoding": {
+      "temperature": 0.0,
+      "top_p": 1.0,
+      "max_tokens": 4096,
+      "context_window": 131072
+    },
+    "judge_seed": 42,
+    "max_samples_per_process": 32,
+    "parallel_model_processes": 4,
+    "target_and_judge_connection_limit": 128,
+    "timeout_seconds": 600,
+    "automatic_inference_retries": 0
+  },
+  "uncertainty": {
+    "item_bootstrap_replicates": 2000,
+    "item_bootstrap_seed": 20261020,
+    "cluster_bootstrap_replicates": 2000,
+    "cluster_bootstrap_seed": 20261103,
+    "cluster_unit": "section_id",
+    "multiple_comparison_adjustment": false
+  },
+  "aggregate_diagnostics": {
+    "model-spec-original": {
+      "judge_invalid": 1,
+      "judge_section_id_checked": 7630,
+      "judge_section_mismatch": 55,
+      "empty_final": 69,
+      "length_terminated": 89
+    },
+    "model-spec-generic": {
+      "judge_invalid": 0,
+      "judge_section_id_checked": 2522,
+      "judge_section_mismatch": 137,
+      "empty_final": 3,
+      "length_terminated": 3
+    },
+    "constitution-original": {
+      "judge_invalid": 0,
+      "judge_section_id_checked": 923,
+      "judge_section_mismatch": 0,
+      "empty_final": 3,
+      "length_terminated": 3
+    },
+    "constitution-generic": {
+      "judge_invalid": 0,
+      "judge_section_id_checked": 1118,
+      "judge_section_mismatch": 0,
+      "empty_final": 13,
+      "length_terminated": 14
+    }
+  },
+  "new_evaluation_diagnostics": {
+    "target_errors": 0,
+    "judge_errors": 0,
+    "invalid_critique_json": 0,
+    "length_terminated": 20,
+    "empty_final_answers": 19,
+    "section_id_mismatches": 137
+  },
+  "cost_estimates": {
+    "new_uncached_usd": 5.399573687999999,
+    "new_reported_cache_adjusted_usd": 5.296910929599999,
+    "previous_official_uncached_usd": 10.282163768,
+    "pricing_checked": "2026-11-03",
+    "pricing_source": "https://thinkingmachines.ai/tinker/pricing/",
+    "not_provider_invoice": true,
+    "checkpoint_storage_included": false
+  },
+  "provenance": {
+    "source_summary_sha256": "f281caa520762089ed7fda67b9e8533cf5e7cb338a019f2b8564bc5bd40cd1b2",
+    "source_answers_sha256": "243729a4ebc5de470e131fa0c786150e500971739fe647074a132798c1969781",
+    "source_validation_sha256": "39d17e41022626e946df20136c02f8521068709bc27f74c44a1a5f97f997e241",
+    "integrity_checks": "Native prompts, logs, raw streams and aggregate scores matched in local offline checks. These checks do not certify semantic grading accuracy."
+  },
+  "publication_scope": {
+    "included": [
+      "Aggregate scores and intervals",
+      "Dataset and training-data hashes with training settings",
+      "Protocol and selected judge-quality findings"
+    ],
+    "local_only": [
+      "Model/checkpoint handles and project identifiers",
+      "Per-item model answers and judge replies",
+      "Requests, thinking, logs, plans and execution records"
+    ],
+    "trained_weights_distributed": false
+  },
+  "artifacts": {
+    "metrics.csv": {
+      "path": "metrics.csv",
+      "sha256": "5a0c0babc1a357a4100034a1616cc41c6984a70f0823bd89f09b286e6bdf16b7"
+    },
+    "judge_findings.json": {
+      "path": "judge_findings.json",
+      "sha256": "af55003713dcdb9e986592ee0cdfcea10131b5f9c9fdddab71f19877d8d28761"
+    },
+    "README.md": {
+      "path": "README.md",
+      "sha256": "63abfcc984b3da28f4a1fdec15e5f8136e8a66c315ebb67f75aae7ccd3e2c234"
+    }
+  },
+  "model_order": [
+    "base",
+    "model-spec-generic-b32",
+    "model-spec-generic-b16",
+    "model-spec-generic-b8",
+    "model-spec-original-b32",
+    "model-spec-original-b16",
+    "model-spec-original-b8",
+    "constitution-generic-b32",
+    "constitution-generic-b16",
+    "constitution-generic-b8",
+    "constitution-original-b32",
+    "constitution-original-b16",
+    "constitution-original-b8"
+  ],
+  "benchmark_order": [
+    "model-spec-original",
+    "model-spec-generic",
+    "constitution-original",
+    "constitution-generic"
+  ]
+}

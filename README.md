@@ -2,7 +2,9 @@
 
 Spec2Behavior synthesizes training data and fine-tunes models from written behavioral specifications, using model specs and constitutions as sources and [Tinker](https://tinker-docs.thinkingmachines.ai/) for training.
 
-Synthesis, Tinker supervised fine-tuning, inference, and upstream Inspect AI evaluation are in the repository.
+The repository includes six synthesis templates, Tinker SFT and inference, four reviewed source-specific training collections, and four fixed policy test collections. The workflow is **specification → synthetic candidates → semantic review → SFT → evaluation**.
+
+[The thirteen-model policy comparison](evaluation/results/nemotron-lightning/README.md) publishes aggregate automatic results across all four test sets. **Known judge errors limit ranking claims**; protocol, denominators, intervals and diagnostics are documented alongside the scores. Raw requests, answers, thinking and execution records remain local.
 
 ## Layout
 
@@ -11,7 +13,7 @@ Synthesis, Tinker supervised fine-tuning, inference, and upstream Inspect AI eva
 | `synthesis/` | API synthesis runner. A chain is `read`, `prompt`, and `parse` |
 | `synthesis/templates/` | Six default chains that turn rule excerpts into SFT rows |
 | `training/` | Tinker SFT and inference over the synthesized conversations |
-| `evaluation/` | Upstream Model Spec, XSTest and StrongREJECT comparisons, overlap screening and cost preparation |
+| `evaluation/` | Evaluation tooling, overlap screening, cost preparation and aggregate research results |
 | `data/` | SFT candidates, reviewed conversations, four evaluation collections, and provenance |
 | `generic/` | Markdown inputs used by the synthesis examples |
 | `model_spec/` | Snapshot of the OpenAI Model Spec |
@@ -62,7 +64,9 @@ Pipeline details, output files, and how to add a chain are in [synthesis/README.
 
 ## Bundled data
 
-[data/candidates.jsonl](data/candidates.jsonl) preserves all 3,170 original conversations from four synthesis rounds over the Model Spec and constitution. [data/reviewed.jsonl](data/reviewed.jsonl) contains the accepted subset after semantic review, targeted checks, and selected Codex adjudication; accepted messages and IDs are unchanged. Use the reviewed file for SFT: the original candidates contain known defects, and the loader does not filter by review metadata. This is model-assisted curation, not human certification or evidence of training performance. [The dataset guide](data/README.md) describes the review criteria, provenance, checksums, and offline validation.
+[Four source-specific SFT collections](data/README.md) contain **5,624 reviewed conversations**: 1,897 Model Spec generic, 1,909 Model Spec original, 932 Constitution generic, and 886 Constitution original. Select a collection explicitly when training. Original/generic variants share source material and are not independent held-out datasets.
+
+The earlier generic-source mixture is also preserved: [data/candidates.jsonl](data/candidates.jsonl) contains 3,170 original conversations from four synthesis rounds over the generic Model Spec and constitution. [data/reviewed.jsonl](data/reviewed.jsonl) contains its 2,829 accepted conversations after semantic review, targeted checks, and selected Codex adjudication; accepted messages and IDs are unchanged. Use the reviewed file for SFT: the original candidates contain known defects, and the loader does not filter by review metadata. This is model-assisted curation, not human certification or evidence of training performance. [The dataset guide](data/README.md) describes the review criteria, provenance, checksums, and offline validation.
 
 ## Training and inference
 
@@ -73,7 +77,7 @@ pip install -e ".[train]"
 export TINKER_API_KEY=...
 
 python -m training sft \
-  --data data/reviewed.jsonl \
+  --data data/variants/model-spec-generic/reviewed.jsonl \
   --log-dir logs/model-spec \
   --model Qwen/Qwen3-8B \
   --batch-size 1 \
@@ -85,7 +89,7 @@ Remove `--dry-run` to train. After training produces a sampler checkpoint:
 ```bash
 python -m training infer \
   --log-dir logs/model-spec \
-  --input data/reviewed.jsonl \
+  --input data/variants/model-spec-generic/reviewed.jsonl \
   --output logs/model-spec/infer
 ```
 
@@ -112,6 +116,16 @@ For base/SFT comparisons, see [evaluation](evaluation/README.md). Model Spec def
 [Four fixed test collections](data/evaluation/README.md) contain **938 conversation/rubric records**: OpenAI Model Spec original **587**, Model Spec generic **194**, Claude Constitution original **71**, and Constitution generic **86**. The official set targets the 2025-12-18 Model Spec; the generic Model Spec source is 2026-08-18. Synthetic cases have explicit source-grounded model/Codex review, not independent human certification. These are separate from SFT data.
 
 Verify their counts and checksums offline with `python -m evaluation.datasets`. [The manifest](data/evaluation/manifest.json) records portable paths, versions, provenance and checksums. Requests, replies, decisions and runtime records remain local.
+
+## Published evaluation results
+
+[The Nemotron Lightning comparison](evaluation/results/nemotron-lightning/README.md) covers the unadapted vendor base and twelve SFT checkpoints across **938 cases per model**. It includes a 52-row CSV, dataset/training hashes, the exact grading settings, paired intervals and selected judge-quality findings. Primary automatic scores are preserved; this is an experimental result summary with known measurement errors, not a validated model ranking.
+
+```bash
+python -m evaluation.published_results
+```
+
+This offline command checks the published file hashes, model/dataset combinations, metric arithmetic, diagnostics and table consistency. It makes no inference calls. The [evaluation guide](evaluation/README.md) distinguishes the upstream comparison CLI from the synthetic task helper and documents their grading-validation differences.
 
 ## Generate evaluation data
 

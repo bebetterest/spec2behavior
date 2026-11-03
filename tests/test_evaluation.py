@@ -607,6 +607,15 @@ def test_paired_runner_and_saved_log_comparison_without_services(config, upstrea
         assert report["diagnostics"]["base"]["judge_invalid"] == int(not verdict_valid)
         assert report["diagnostics"]["base"]["judge_calls"] == 1
         assert report["diagnostics"]["base"]["judge_parse_failures"] == 0
+        if name == "model_spec":
+            # FakeJudgeClient returns a schema-valid "offline" section, rather
+            # than the requested section ID. Count it without changing the
+            # historical pass score or the valid-pair denominator above.
+            assert report["diagnostics"]["base"]["judge_section_id_checked"] == int(verdict_valid)
+            assert report["diagnostics"]["base"]["judge_section_mismatch"] == int(verdict_valid)
+        else:
+            assert report["diagnostics"]["base"]["judge_section_id_checked"] == 0
+            assert report["diagnostics"]["base"]["judge_section_mismatch"] == 0
 
     # A task that has not run is missing coverage, not a zero score.
     if "xstest_safe" not in tasks:

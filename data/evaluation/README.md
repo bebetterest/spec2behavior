@@ -62,6 +62,12 @@ Published records preserve the reviewed IDs, conversations, rubrics and content 
 
 Original candidates, revision decisions, probes, requests, replies, thinking, seeds, costs, failed attempts, and execution records remain **local only**. They are not included in this dataset release.
 
+## Evaluation results and judge reliability
+
+[The public thirteen-model comparison](../../evaluation/results/nemotron-lightning/README.md) reports the first aggregate evaluation on these fixed files. Selected case review found clear rubric misapplication, so data acceptance must not be treated as certification of an external judge. The report preserves the automatic primary rates and documents the known grading problems separately. Per-item answers, judge replies and execution evidence remain local.
+
+The optional `build_task` helper enforces the returned section ID using its local `Grade` contract. The historical published comparison used the upstream critique parser without that equality check for every column. Use the documented protocol when comparing results; these validation choices can change scores.
+
 ## Validation and limits
 
 - The official records match the pinned upstream loader, including its skip selection and tool histories.

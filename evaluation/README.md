@@ -12,6 +12,14 @@ Compare a Tinker base model and one or more final SFT samplers with [Inspect AI]
 
 [The checked-in evaluation datasets](../data/evaluation/README.md) provide the official Model Spec set (587 records) and three reviewed synthetic collections (194 Model Spec generic, 71 Constitution original, 86 Constitution generic). Run `python -m evaluation.datasets` to verify all **938** records offline. Each `target` is a rubric shown only to the judge. The synthetic datasets load with `evaluation.builder.inspect_task.build_task(path, judge)`; supply a configured judge and preserve the documented developer-role convention. The comparison CLI below selects its upstream benchmarks and does not automatically include these synthetic files.
 
+## Published results and grading limits
+
+[The Nemotron Lightning policy comparison](results/nemotron-lightning/README.md) contains aggregate results for thirteen models across all four fixed policy collections. [Its CSV](results/nemotron-lightning/metrics.csv) and [manifest](results/nemotron-lightning/manifest.json) document the primary rates, paired coverage/intervals, dataset bindings and decoding settings. Verify them offline with `python -m evaluation.published_results`.
+
+Selected review found clear judge direction errors. The reused official replies also contain 55 returned section-ID mismatches, in addition to 137 in the new synthetic evaluations. The upstream critique parser accepts schema-valid JSON without enforcing section-ID equality. `compare` now reports both `judge_section_id_checked` and `judge_section_mismatch`, separately from `judge_invalid`; primary scores and pairing behavior remain unchanged. A zero mismatch count with zero checks means unmeasured, not verified equality.
+
+The synthetic `builder.inspect_task.build_task` helper has a stricter local `Grade` contract and rejects an incorrect returned section ID. That validation differs from the published historical comparison, which used `rubric_only_section_compliance` and the original upstream parser for every column. Report the scorer/validation choice with results; sharing the rubric-only label does not make different grading protocols interchangeable. The comparison CLI below still selects its upstream benchmarks and requires compared training runs to share one corpus; it does not reproduce the published mixed-corpus experiment with a single command.
+
 ## Install and prepare
 
 Run from this checkout. Keep evaluation dependencies in a separate local environment.
