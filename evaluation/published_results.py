@@ -193,11 +193,15 @@ def verify(directory=None, root=ROOT):
         _require(finding["case_id"] in {r["id"] for r in records[finding["collection"]]},
                  "Judge finding references a missing public case")
     readme = (directory / "README.md").read_text()
+    best_passed = {b: max(int(indexed[b, model]["passed"]) for model in model_order) for b in benchmark_order}
     for model in model_order:
         info = models[model]
         label = "Unadapted vendor base | —" if model == "base" else f"{info['training_collection']} | {info['batch_size']}"
-        cells = [f"{float(indexed[b, model]['pass_rate']) * 100:.2f}% ({indexed[b, model]['passed']}/{indexed[b, model]['total']})"
-                 for b in benchmark_order]
+        cells = []
+        for benchmark in benchmark_order:
+            row = indexed[benchmark, model]
+            cell = f"{float(row['pass_rate']) * 100:.2f}% ({row['passed']}/{row['total']})"
+            cells.append(f"**{cell}**" if int(row["passed"]) == best_passed[benchmark] else cell)
         _require(f"| {label} | " + " | ".join(cells) + " |" in readme, "Published table differs from CSV")
     contrast_count = len(collections) * (len(models) - 1)
     _require(f"{contrast_count - pairs_excluding_zero} of the {contrast_count} section-cluster paired 95% intervals include zero"

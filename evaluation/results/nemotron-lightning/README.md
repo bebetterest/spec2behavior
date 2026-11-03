@@ -9,16 +9,18 @@ The comparison covers twelve LoRA SFT checkpoints and the unadapted vendor model
 | Unadapted vendor base | — | 78.53% (461/587) | 93.30% (181/194) | 85.92% (61/71) | 74.42% (64/86) |
 | model-spec-generic | 32 | 79.22% (465/587) | 92.78% (180/194) | 85.92% (61/71) | 72.09% (62/86) |
 | model-spec-generic | 16 | 79.73% (468/587) | 93.30% (181/194) | 85.92% (61/71) | 74.42% (64/86) |
-| model-spec-generic | 8 | 81.43% (478/587) | 95.88% (186/194) | 85.92% (61/71) | 75.58% (65/86) |
+| model-spec-generic | 8 | **81.43% (478/587)** | **95.88% (186/194)** | 85.92% (61/71) | **75.58% (65/86)** |
 | model-spec-original | 32 | 80.58% (473/587) | 92.78% (180/194) | 81.69% (58/71) | 72.09% (62/86) |
 | model-spec-original | 16 | 80.24% (471/587) | 93.81% (182/194) | 84.51% (60/71) | 70.93% (61/86) |
-| model-spec-original | 8 | 80.07% (470/587) | 94.85% (184/194) | 84.51% (60/71) | 75.58% (65/86) |
+| model-spec-original | 8 | 80.07% (470/587) | 94.85% (184/194) | 84.51% (60/71) | **75.58% (65/86)** |
 | constitution-generic | 32 | 80.41% (472/587) | 93.81% (182/194) | 84.51% (60/71) | 72.09% (62/86) |
 | constitution-generic | 16 | 80.24% (471/587) | 92.78% (180/194) | 84.51% (60/71) | 69.77% (60/86) |
-| constitution-generic | 8 | 81.09% (476/587) | 93.30% (181/194) | 85.92% (61/71) | 75.58% (65/86) |
+| constitution-generic | 8 | 81.09% (476/587) | 93.30% (181/194) | 85.92% (61/71) | **75.58% (65/86)** |
 | constitution-original | 32 | 80.07% (470/587) | 92.78% (180/194) | 84.51% (60/71) | 74.42% (64/86) |
 | constitution-original | 16 | 79.05% (464/587) | 92.78% (180/194) | 81.69% (58/71) | 69.77% (60/86) |
-| constitution-original | 8 | 80.24% (471/587) | 92.78% (180/194) | 87.32% (62/71) | 72.09% (62/86) |
+| constitution-original | 8 | 80.24% (471/587) | 92.78% (180/194) | **87.32% (62/71)** | 72.09% (62/86) |
+
+Bold cells mark the highest observed pass rate in each column, including all ties.
 
 These are automatic compliance rates within each dataset. The official column targets the 2025-12-18 Model Spec; the generic Model Spec column uses the 2026-08-18 source. Constitution sources are dated 2026-01-20. Difficulty, scope and correlated source variants differ across columns, so no pooled benchmark score is defined.
 
