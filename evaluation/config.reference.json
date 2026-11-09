@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "judge": {
+    "model_spec_grading": "rubric-only",
+    "model": "openai/gpt-oss-120b:peft:131072",
+    "renderer": "gpt_oss_low_reasoning",
+    "context_window": 131072,
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "max_tokens": 4096,
+    "samples": 1,
+    "max_connections": 128,
+    "tokenizer_revision": "b5c939de8f754692c1647ca79fbf85e8c1e70f8a"
+  },
+  "sampling": {
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "seed": 20261020,
+    "max_tokens": 8192,
+    "context_window": 65536,
+    "epochs": 1,
+    "max_connections": 128
+  },
+  "execution": {
+    "max_samples": 32,
+    "max_retries": 0,
+    "timeout_seconds": 600,
+    "pilot_min_per_task": 2
+  },
+  "pricing": {
+    "checked_date": "2026-11-08",
+    "judge_input_usd_per_million": 0.33,
+    "judge_output_usd_per_million": 0.84,
+    "judge_source": "https://tinker-docs.thinkingmachines.ai/tinker/models.json",
+    "target_input_usd_per_million": 0.184,
+    "target_output_usd_per_million": 0.495,
+    "target_source": "https://tinker-docs.thinkingmachines.ai/tinker/models.json",
+    "target_pricing_note": "Reference rate snapshot. Refresh tariffs before a paid run.",
+    "contingency_fraction": 0.2,
+    "scenarios": [
+      {
+        "name": "short",
+        "target_total_output_tokens": 1024,
+        "target_final_answer_tokens": 256,
+        "judge_total_output_tokens": 512
+      },
+      {
+        "name": "planning",
+        "target_total_output_tokens": 2048,
+        "target_final_answer_tokens": 512,
+        "judge_total_output_tokens": 1024
+      },
+      {
+        "name": "long",
+        "target_total_output_tokens": 4096,
+        "target_final_answer_tokens": 1024,
+        "judge_total_output_tokens": 2048
+      }
+    ]
+  }
+}

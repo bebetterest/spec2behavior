@@ -11,6 +11,7 @@ from inspect_ai.solver import TaskState
 from tinker_cookbook import renderers
 from tinker_cookbook.eval.inspect_utils import convert_inspect_messages
 
+from .fixed_policy import BENCHMARKS as FIXED_POLICY_TESTS
 from .provider import DeveloperRoleRenderer, judge_messages
 
 
@@ -94,7 +95,7 @@ async def measure_prompts(tasks, judge, tokenizer, renderer_name, judge_renderer
     result = {}
     for name, task in tasks.items():
         renderer = renderers.get_renderer(name=renderer_name, tokenizer=tokenizer)
-        if name == "model_spec":
+        if name == "model_spec" or name in FIXED_POLICY_TESTS:
             renderer = DeveloperRoleRenderer(renderer)
         rows = []
         for sample in task.dataset:

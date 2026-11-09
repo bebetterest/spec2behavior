@@ -1,10 +1,47 @@
 # Spec2Behavior
 
+![Hand-drawn Spec2Behavior workflow from specification through synthesis, review, supervised fine-tuning, and evaluation](assets/spec2behavior-hero.jpg)
+
 Spec2Behavior synthesizes training data and fine-tunes models from written behavioral specifications, using model specs and constitutions as sources and [Tinker](https://tinker-docs.thinkingmachines.ai/) for training.
 
-The repository includes six synthesis templates, Tinker SFT and inference, four reviewed source-specific training collections, and four fixed policy test collections. The workflow is **specification → synthetic candidates → semantic review → SFT → evaluation**.
+## Training and evaluation results
 
-[The thirteen-model policy comparison](evaluation/results/nemotron-lightning/README.md) publishes aggregate automatic results across all four test sets. **Known judge errors limit ranking claims**; protocol, denominators, intervals and diagnostics are documented alongside the scores. Raw requests, answers, thinking and execution records remain local.
+The [10-epoch reference experiment](#default-sft-experiment) covers four training collections and three batch sizes. Each model is evaluated on 938 cases across four fixed policy tests.
+
+Training loss fell through epoch 10 for all twelve configurations. In the 48 matched comparisons against five epochs, automatic pass rates rose in 20, fell in 21, and tied in 7. The highest ten-epoch pass rate was lower than the highest five-epoch rate on each test.
+
+### Training loss
+
+Each point averages the pre-update training NLL over the examples in that epoch of the ten-epoch schedule. The labels at the right show epoch 10.
+
+![Training NLL over ten epochs for four training collections at batch sizes 8, 16, and 32](assets/epoch-sweep/training-loss.png)
+
+### Evaluation accuracy
+
+Accuracy is the automatic rubric pass rate on the four fixed tests, using GPT-OSS-120B as a rubric-only judge. A score of 6 or 7 out of 7 counts as a pass. The dashed lines connect the base and independently trained 1-, 3-, 5-, and 10-epoch endpoints. Each test row uses its own labeled y-axis range.
+
+![Rubric pass rates for the base and 1-, 3-, 5-, and 10-epoch runs, grouped by test and batch size](assets/epoch-sweep/evaluation-accuracy.png)
+
+On one reviewed control item, the judge marked 10 of 12 ten-epoch replies as failures despite those replies meeting the rubric. The curves retain the original automatic scores.
+
+[Training loss CSV](assets/epoch-sweep/training-loss.csv) · [Evaluation accuracy CSV](assets/epoch-sweep/evaluation-accuracy.csv) · [Reproduce the experiment](#default-sft-experiment) · [Earlier thirteen-model comparison](evaluation/results/nemotron-lightning/README.md)
+
+## Quick start
+
+Use Python 3.11 or newer and run the commands from a clone of this repository. The bundled data and upstream snapshots are part of the checkout.
+
+```bash
+git clone https://github.com/bebetterest/spec2behavior.git
+cd spec2behavior
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+
+python -m synthesis list
+python -m evaluation.datasets
+```
+
+These commands need no API credentials. For the ten-epoch training and evaluation workflow, start with the [reference experiment](#default-sft-experiment). Install `.[dev]` to run the tests with `python -m pytest`.
 
 ## Layout
 
@@ -15,25 +52,17 @@ The repository includes six synthesis templates, Tinker SFT and inference, four 
 | `training/` | Tinker SFT and inference over the synthesized conversations |
 | `evaluation/` | Evaluation tooling, overlap screening, cost preparation and aggregate research results |
 | `data/` | SFT candidates, reviewed conversations, four evaluation collections, and provenance |
+| `assets/epoch-sweep/` | Figures and aggregate tables for the reference experiment |
 | `generic/` | Markdown inputs used by the synthesis examples |
 | `model_spec/` | Snapshot of the OpenAI Model Spec |
 | `claude-constitution/` | Snapshot of Claude's constitution |
 | `model_spec_evals/` | Snapshot of OpenAI's Model Spec eval harness |
 
-The three upstream trees stay separate from this project's code. The Model Spec and constitution are CC0; the eval harness is MIT-licensed.
-
 ## Synthesis
 
 A chain is three functions in a Python file. `read` yields records, `prompt` turns one record into the model request, and `parse` turns the reply into SFT conversations. `synthesis/templates/` holds six default chains. Each one reads the direct body under each heading in a Markdown spec or constitution, splitting long bodies on paragraph boundaries. Copy one and edit those functions, then pass the file with `--template`. The runner calls an OpenAI-compatible chat completions API, runs requests in batches with a concurrency limit, and resumes from JSONL checkpoints.
 
-```bash
-python -m synthesis list
-python -m synthesis run rule_examples --help
-```
-
-Put `DEEPSEEK_API_KEY` in `.env`, using [.env.example](.env.example) as a reference. Synthesis reads it automatically from the current directory. CLI flags override process environment variables, which override `.env`. Use `--env-file FILE` to select another file.
-
-Preview one request without calling an API or writing output:
+Preview one request locally. Run `python -m synthesis run rule_examples --help` for the available settings.
 
 ```bash
 python -m synthesis run rule_examples \
@@ -44,7 +73,7 @@ python -m synthesis run rule_examples \
   --dry-run
 ```
 
-Remove `--dry-run` to generate that sample. Repeat the command to resume after an interruption. Remove `--limit 1` for all pending excerpts; adjust `--concurrency`, `--batch-size`, and `--max-retries` for a larger run.
+For live synthesis, put `DEEPSEEK_API_KEY` in the ignored `.env` using [.env.example](.env.example) and remove `--dry-run`. CLI flags override environment variables, which override `.env`. Use `--env-file FILE` to select another file. Repeat the command to resume or remove `--limit 1` to process all pending excerpts.
 
 The other default chains are `correction`, `reflection`, `pressure`, `chain_of_command`, and `safe_completion`. They share `--source` and write different `sft_form` values.
 
@@ -70,12 +99,9 @@ The earlier generic-source mixture is also preserved: [data/candidates.jsonl](da
 
 ## Training and inference
 
-SFT uses Tinker Cookbook. Inference samples with the same chat renderer and can read the newest sampler checkpoint from the training log.
+The general-purpose SFT command uses Tinker Cookbook. Inference samples with the same chat renderer and can read the newest sampler checkpoint from the training log. The example below is a dry-run smoke test. See the [default SFT experiment](#default-sft-experiment) for the DiMuon reference recipe.
 
 ```bash
-pip install -e ".[train]"
-export TINKER_API_KEY=...
-
 python -m training sft \
   --data data/variants/model-spec-generic/reviewed.jsonl \
   --log-dir logs/model-spec \
@@ -84,7 +110,7 @@ python -m training sft \
   --dry-run
 ```
 
-Remove `--dry-run` to train. After training produces a sampler checkpoint:
+For live training, install `.[train]`, set `TINKER_API_KEY` in the environment, and remove `--dry-run`. After training produces a sampler checkpoint, run inference with the same environment.
 
 ```bash
 python -m training infer \
@@ -95,27 +121,29 @@ python -m training infer \
 
 Flags, resume behavior, and the prediction file are in [training/README.md](training/README.md).
 
-## Install
-
-Python 3.11 or newer.
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-```
-
-`python -m synthesis` also works from the repository root when its dependencies are installed.
-
-Installation also provides `spec2behavior-synthesize`, `spec2behavior-train`, `spec2behavior-eval`, and `spec2behavior-build-evals`, equivalent to `python -m synthesis`, `python -m training`, `python -m evaluation`, and `python -m evaluation.builder`.
-
-For base/SFT comparisons, see [evaluation](evaluation/README.md). Model Spec defaults to rubric-only grading; one base can be compared with multiple named SFT checkpoints. Use its isolated environment and `prepare` command to download pinned public assets, screen overlap, and review the judge, sampling and uncached cost estimates before any paid inference.
-
 ## Evaluation datasets
 
 [Four fixed test collections](data/evaluation/README.md) contain **938 conversation/rubric records**: OpenAI Model Spec original **587**, Model Spec generic **194**, Claude Constitution original **71**, and Constitution generic **86**. The official set targets the 2025-12-18 Model Spec; the generic Model Spec source is 2026-08-18. Synthetic cases have explicit source-grounded model/Codex review, not independent human certification. These are separate from SFT data.
 
 Verify their counts and checksums offline with `python -m evaluation.datasets`. [The manifest](data/evaluation/manifest.json) records portable paths, versions, provenance and checksums. Requests, replies, decisions and runtime records remain local.
+
+## Default SFT experiment
+
+Spec2Behavior uses **10 epochs** as the default schedule for its reference SFT experiments. The sweep crosses four [reviewed training collections](data/README.md) with three batch sizes, for twelve configurations. Each configuration starts from the same base model and trains on one collection.
+
+| Setting | Value |
+| --- | --- |
+| Base model | `nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16` |
+| Renderer | `nemotron3_ultra_preserve_thinking` |
+| Epochs | 10 |
+| Batch sizes | 8, 16, 32 |
+| LoRA rank | 64 |
+| Optimizer | DiMuon v1, `beta1=0.9`, gradient clipping disabled |
+| Learning rate | `1e-3`, linear decay over the full schedule |
+| Training objective | Cross-entropy on all assistant messages, averaged per example |
+| Data order | Shuffle seeds 0 through 9, with partial final batches retained |
+
+Use the [reference training runner](training/README.md#reference-experiment) and the [fixed policy evaluation commands](evaluation/README.md#reproduce-the-reference-epoch-sweep) to reproduce the experiment from a checkout. Set credentials in the environment or the ignored `.env` using [.env.example](.env.example).
 
 ## Published evaluation results
 
@@ -129,4 +157,10 @@ This offline command checks the published file hashes, model/dataset combination
 
 ## Generate evaluation data
 
-[The evaluation builder](evaluation/builder/README.md) constructs source-grounded conversation/rubric candidates for the other three spec collections, with source review, independently authored probes, bounded revision, SFT-overlap screening and explicit reviewed export. Its default configuration is a six-case small-sample run. Raw API evidence and review records remain under ignored local directories.
+[The evaluation builder](evaluation/builder/README.md) constructs source-grounded conversation/rubric candidates for the other three spec collections, with source review, independently authored probes, bounded revision, SFT-overlap screening and explicit reviewed export. Install its dependencies with `python -m pip install -e '.[evalgen]'`. The default configuration plans up to six cases. Raw API evidence and review records remain under ignored local directories.
+
+## License
+
+Project-authored code and accompanying documentation use the [MIT License](LICENSE). The [dataset license](data/LICENSE.md) lists the synthetic datasets available under CC BY 4.0 and gives a suggested attribution.
+
+The upstream [Model Spec](model_spec/LICENSE), [Claude Constitution](claude-constitution/LICENSE), and [official Model Spec test data](data/evaluation/LICENSE-model-spec-dataset.txt) are CC0-1.0. The upstream [Model Spec eval harness](model_spec_evals/LICENSE) uses the MIT License.

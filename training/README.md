@@ -2,14 +2,30 @@
 
 Supervised fine-tuning and inference on [Tinker](https://tinker-docs.thinkingmachines.ai/). The dataset is conversation JSONL from [synthesis](../synthesis/README.md), reviewed for rule compliance and factual correctness. Tinker Cookbook trains on `messages` and ignores `id` and `meta`. A metadata field such as `review_decision` does not filter rows: pass a file containing only the accepted conversations.
 
-Install the training extra and export an API key from the Tinker console:
+From the checkout, `python -m training sft --dry-run` validates the conversation file and prints the plan. For live training with the general-purpose runner, install the training extra and export an API key from the Tinker console.
 
 ```bash
 pip install -e ".[train]"
 export TINKER_API_KEY=...
 ```
 
-`python -m training sft --dry-run` validates the dataset and prints the run plan without Tinker.
+## Reference experiment
+
+Run these commands from the checkout root. The reference runner pins the model, tokenizer, renderer, DiMuon v1, rank 64, and the linear `1e-3` learning-rate schedule. It verifies the selected [reviewed collection](../data/README.md), trains on all assistant messages, and keeps partial batches.
+
+```bash
+# With the environment from the repository quick start active.
+python -m pip install -e '.[eval]' torch==2.14.1 transformers==5.5.4
+
+# Preview the 10-epoch plan. This needs no credentials.
+python -m training.reference \
+  --collection model-spec-original --batch-size 8 \
+  --output runs/reference/model-spec-original-b8-e10
+```
+
+Set `TINKER_API_KEY` and `TINKER_PROJECT_ID` in your environment or the checkout's ignored `.env`. Add `--execute` to the preview command to start paid training. The runner downloads the pinned public tokenizer files and saves the final sampler and per-step metrics under the specified run directory. Use a fresh directory for each execution.
+
+Repeat for each collection (`model-spec-original`, `model-spec-generic`, `constitution-original`, `constitution-generic`) and each batch size (8, 16, 32) to get the twelve default configurations. Use `--epochs 1`, `3`, or `5` in separate directories for the other horizons in the accuracy figure. All horizons start from the base with their own learning-rate schedule. See [fixed policy evaluation](../evaluation/README.md#reproduce-the-reference-epoch-sweep) for the next command.
 
 ## Fine-tune
 

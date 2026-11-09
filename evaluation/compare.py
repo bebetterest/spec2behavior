@@ -8,11 +8,12 @@ import random
 from statistics import mean
 
 from .core import read_prepared_plan, write_json
+from .fixed_policy import BENCHMARKS as FIXED_POLICY_TESTS
 
 
 def value_for_pair(benchmark, score):
     """Derived per-item quantities with the same direction/scale as upstream metrics."""
-    if benchmark == "model_spec":
+    if benchmark == "model_spec" or benchmark in FIXED_POLICY_TESTS:
         if not score.metadata or not score.metadata.get("critiques"):
             return None
         value = score.as_float()
@@ -67,7 +68,7 @@ def compare_run(prepared, run_dir, output):
                               "The flagged-excluded view is auxiliary and does not certify semantic independence. No combined benchmark average is defined.",
                               "Section-id checks are reported separately from JSON validity; the upstream parser does not enforce equality, so identifier mismatches do not silently change scores or paired coverage."]}
     for benchmark in plan["lock"]["dataset_counts"]:
-        values, details, metrics = {}, {}, {}
+        values, details, metrics, accuracy = {}, {}, {}, {}
         slices = {r["id"]: r.get("metadata") or {} for r in samples[benchmark]}
         expected = set(plan["pilot_ids"][benchmark]) if run["profile"] == "pilot" else {r["id"] for r in samples[benchmark]}
         for target in targets:
@@ -91,6 +92,7 @@ def compare_run(prepared, run_dir, output):
                       "judge_calls": 0, "judge_empty_answers": 0, "judge_length_terminated": 0, "judge_parse_failures": 0,
                       "judge_section_id_checked": 0, "judge_section_mismatch": 0}
             scored = {}
+            passed = primary_scored = 0
             for sample in log.samples or []:
                 if sample.epoch != 1 or sample.id in scored:
                     raise ValueError("Expected one epoch and unique sample ids")
@@ -111,7 +113,7 @@ def compare_run(prepared, run_dir, output):
                             counts["judge_length_terminated"] += int(any(s["stop_reason"] == "length" for s in sequences))
                             counts["judge_parse_failures"] += int(any(not s["parse_success"] for s in sequences))
                 sample_scores = list((sample.scores or {}).values())
-                if benchmark == "model_spec" and sample_scores and not sample.error:
+                if (benchmark == "model_spec" or benchmark in FIXED_POLICY_TESTS) and sample_scores and not sample.error:
                     expected_section = slices.get(sample.id, {}).get("section_id")
                     critiques = (sample_scores[0].metadata or {}).get("critiques")
                     if expected_section is not None and critiques:
@@ -124,20 +126,29 @@ def compare_run(prepared, run_dir, output):
                 value = value_for_pair(benchmark, sample_scores[0]) if sample_scores and not sample.error else None
                 if value is None:
                     counts["judge_invalid"] += int(sample.error is None)
+                if plan.get("fixed_policy") and sample_scores and not sample.error:
+                    primary_scored += 1
+                    passed += sample_scores[0].as_float() == 1.0
                 scored[sample.id] = value
             if scored.keys() - expected:
                 raise ValueError("Inspect log contains ids outside the frozen profile")
             counts["missing_samples"] = len(expected - scored.keys())
             values[target], details[target] = scored, counts
+            if plan.get("fixed_policy"):
+                accuracy[target] = {"passed": passed, "scored": primary_scored, "total": len(expected),
+                                    "pass_rate": passed / len(expected) if primary_scored == len(expected) else None}
         flagged = set(overlap["flagged_ids"][benchmark])
         summary = {"expected_samples_per_model": len(expected), "diagnostics": details, "inspect_results": metrics,
                    "comparisons": {}}
-        key = {"model_spec": "top_level_section", "xstest_safe": "type", "xstest_unsafe": "type", "strong_reject": "category"}[benchmark]
+        if plan.get("fixed_policy"):
+            summary["accuracy"] = accuracy
+        key = {"xstest_safe": "type", "xstest_unsafe": "type", "strong_reject": "category"}.get(benchmark, "top_level_section")
         for target in (name for name in targets if name != "base"):
             pair_ids = sorted(expected & values["base"].keys() & values[target].keys())
             valid = [i for i in pair_ids if values["base"][i] is not None and values[target][i] is not None]
+            target_flags = set(overlap["flagged_ids_by_target"][target][benchmark]) if plan.get("fixed_policy") else flagged
             comparison = {"paired": paired_summary([(values["base"][i], values[target][i]) for i in valid]),
-                          "paired_flagged_excluded": paired_summary([(values["base"][i], values[target][i]) for i in valid if i not in flagged]),
+                          "paired_flagged_excluded": paired_summary([(values["base"][i], values[target][i]) for i in valid if i not in target_flags]),
                           "slices": {}}
             for group in sorted({str(slices[i].get(key)) for i in valid}):
                 comparison["slices"][group] = paired_summary([(values["base"][i], values[target][i]) for i in valid if str(slices[i].get(key)) == group])

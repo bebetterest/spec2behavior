@@ -12,6 +12,8 @@ Four fixed conversation/rubric collections are available, containing **938 evalu
 
 [manifest.json](manifest.json) is the index: file paths, counts, file/content checksums, source versions and checksums, upstream revisions, construction settings, and review scope. Keep the four collections separate when reporting scores. The two Model Spec collections target different source versions; they are not an original/generic matched test pair.
 
+The three synthetic collections are available under [CC BY 4.0](../LICENSE.md). The official OpenAI collection retains its [upstream CC0-1.0 notice](LICENSE-model-spec-dataset.txt).
+
 ## Format and loading
 
 Each line is an Inspect AI record with `id`, `input`, `target`, and `metadata`. `input` is the conversation **before** the evaluated final answer. `target` is the grading rubric, **not** a reference answer. Send the conversation to the candidate model and the rubric to the judge only. The grading scale is 1–7, with compliance at **>=6**.
@@ -42,7 +44,7 @@ dataset = json_dataset("data/evaluation/model-spec-original.jsonl")
 
 In the upstream convention, Inspect `system` messages represent **developer/operator** instructions. Preserve this mapping when using another model adapter. The official file includes tool-call histories and inputs ending in tool or instruction turns; do not force every official input to end in a user message. Internal transport message IDs are omitted; actual tool-call IDs, structured contents and message order are preserved.
 
-For the three synthetic collections, `evaluation.builder.inspect_task.build_task(path, judge)` constructs a rubric-only Inspect task with an explicitly supplied judge. See [evaluation](../../evaluation/README.md) for the native Tinker adapter and [the builder](../../evaluation/builder/README.md) for generation and review. The existing `evaluation prepare/run` comparison CLI selects its upstream benchmarks; it does not automatically evaluate these three synthetic files. Loading or verifying data makes no inference calls.
+For the three synthetic collections, `evaluation.builder.inspect_task.build_task(path, judge)` constructs a rubric-only Inspect task with an explicitly supplied judge. See [evaluation](../../evaluation/README.md) for the native Tinker adapter and [the builder](../../evaluation/builder/README.md) for generation and review. Use `python -m evaluation prepare --fixed-policy` for the [reference evaluation](../../evaluation/README.md#reproduce-the-reference-epoch-sweep) on all four bundled tests. The standard `prepare` mode uses its upstream benchmark selection. Loading or verifying data makes no inference calls.
 
 ## Official Model Spec collection
 

@@ -34,5 +34,5 @@ include = ["synthesis*", "training*", "evaluation*"]
 testpaths = ["tests"]
 
 [tool.setuptools.package-data]
-"evaluation" = ["README.md", "config.example.json", "rubric_only_prompt.md"]
+"evaluation" = ["README.md", "config.example.json", "config.reference.json", "rubric_only_prompt.md"]
 "evaluation.builder" = ["config.example.json", "config.full.json", "README.md"]

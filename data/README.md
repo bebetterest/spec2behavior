@@ -2,6 +2,8 @@
 
 The four conversation/rubric **test collections** are documented separately in [evaluation/](evaluation/README.md). The files below are SFT training data.
 
+The synthetic SFT collections and the original generic mixture are available under [CC BY 4.0](LICENSE.md), with attribution guidance in the dataset license.
+
 Four separate source collections are available. Use the `reviewed.jsonl` in the selected collection for SFT; each adjacent `candidates.jsonl` preserves its complete convertible candidate set.
 
 | Collection | Source version | Candidate rows | Reviewed SFT rows |

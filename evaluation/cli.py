@@ -13,7 +13,8 @@ def parser():
     prepare = sub.add_parser("prepare", help="Download public assets, screen overlap, and estimate costs; no model API calls")
     prepare.add_argument("--training-run", action="append", required=True, metavar="[NAME=]PATH",
                          help="Completed SFT run; repeat for multiple checkpoints. Base is included once.")
-    prepare.add_argument("--config", type=Path, default=Path(__file__).with_name("config.example.json"))
+    prepare.add_argument("--config", type=Path, help="Defaults to the reference config for --fixed-policy, otherwise the upstream comparison config")
+    prepare.add_argument("--fixed-policy", action="store_true", help="Use the four bundled policy tests and reference rubric-only protocol")
     prepare.add_argument("--output", type=Path, required=True)
     prepare.add_argument("--manual-findings", type=Path, help="Optional reviewed overlap finding or list, with eval_id and benchmark")
     prepare.add_argument("--benchmark", action="append", choices=["model_spec", "xstest_safe", "xstest_unsafe", "strong_reject"],
@@ -48,8 +49,11 @@ def main(argv=None):
     try:
         if args.command == "prepare":
             from .runner import prepare
-            plan = asyncio.run(prepare(root, training_runs(args.training_run), args.config.resolve(), args.output.resolve(),
-                                       args.manual_findings, args.benchmark))
+            from .fixed_policy import DEFAULT_CONFIG
+            config = args.config or (DEFAULT_CONFIG if args.fixed_policy else Path(__file__).with_name("config.example.json"))
+            options = {"fixed_policy": True} if args.fixed_policy else {}
+            plan = asyncio.run(prepare(root, training_runs(args.training_run), config.resolve(), args.output.resolve(),
+                                       args.manual_findings, args.benchmark, **options))
             print(json.dumps({"status": "prepared_without_model_inference", "plan_sha256": plan["plan_sha256"],
                               "review": str(args.output.resolve() / "REVIEW.md"), "samples_per_target": sum(plan["lock"]["dataset_counts"].values())}, indent=2))
         elif args.command == "run":
