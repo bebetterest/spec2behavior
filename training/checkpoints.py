@@ -45,10 +45,17 @@ def load_run_info(log_dir: Path) -> dict[str, Any] | None:
     if not path.is_file():
         path = log_dir / _LEGACY_RUN_INFO_NAME
         if not path.is_file():
-            return None
+            path = log_dir / "config.json"
+            if not path.is_file():
+                return None
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
         raise ValueError(f"{path} is not a JSON object")
+    # Reference and earlier experiment runs keep these fields in config.json.
+    if path.name == "config.json" and not all(
+        isinstance(value.get(key), str) and value[key].strip() for key in ("model", "renderer")
+    ):
+        return None
     return value
 
 

@@ -177,9 +177,11 @@ def require_cookbook() -> None:
 
 def require_api_key() -> None:
     import os
+    from dotenv import load_dotenv
 
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
     if not os.environ.get("TINKER_API_KEY"):
-        raise RuntimeError("Set TINKER_API_KEY before training or inference.")
+        raise RuntimeError("Set TINKER_API_KEY in the environment or checkout .env before training or inference.")
 
 
 async def open_sampler(

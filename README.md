@@ -22,8 +22,6 @@ Accuracy is the automatic rubric pass rate on the four fixed tests, using GPT-OS
 
 ![Rubric pass rates for the base and 1-, 3-, 5-, and 10-epoch runs, grouped by test and batch size](assets/epoch-sweep/evaluation-accuracy.png)
 
-On one reviewed control item, the judge marked 10 of 12 ten-epoch replies as failures despite those replies meeting the rubric. The curves retain the original automatic scores.
-
 [Training loss CSV](assets/epoch-sweep/training-loss.csv) · [Evaluation accuracy CSV](assets/epoch-sweep/evaluation-accuracy.csv) · [Reproduce the experiment](#default-sft-experiment) · [Earlier thirteen-model comparison](evaluation/results/nemotron-lightning/README.md)
 
 ## Quick start
@@ -136,6 +134,7 @@ Spec2Behavior uses **10 epochs** as the default schedule for its reference SFT e
 | Base model | `nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16` |
 | Renderer | `nemotron3_ultra_preserve_thinking` |
 | Epochs | 10 |
+| Checkpoints | Training state and sampler after every epoch; final epoch named `final` |
 | Batch sizes | 8, 16, 32 |
 | LoRA rank | 64 |
 | Optimizer | DiMuon v1, `beta1=0.9`, gradient clipping disabled |

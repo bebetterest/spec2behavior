@@ -394,3 +394,43 @@ def test_resolve_target_base_uses_the_recorded_model(tmp_path: Path):
 def _jsonl(path: Path, rows: list[dict]) -> Path:
     _write_jsonl(path, rows)
     return path
+
+
+def test_reference_config_supplies_inference_metadata(tmp_path):
+    config = {"model": "reference-model", "renderer": "reference-renderer", "num_epochs": 10}
+    (tmp_path / "config.json").write_text(json.dumps(config))
+    records = [{"name": "epoch-01", "sampler_path": "tinker://reference/sampler_weights/epoch-01"},
+               {"name": "final", "sampler_path": "tinker://reference/sampler_weights/final"}]
+    _write_jsonl(tmp_path / "checkpoints.jsonl", records)
+    args = Namespace(log_dir=tmp_path, base=False, model_path=None, model=None, renderer=None)
+    assert _resolve_target(args) == (config["model"], config["renderer"], records[-1]["sampler_path"])
+    args.model_path = records[0]["sampler_path"]
+    assert _resolve_target(args)[2] == records[0]["sampler_path"]
+    args.model_path, args.base = None, True
+    assert _resolve_target(args) == (config["model"], config["renderer"], None)
+    # Dedicated run metadata still takes precedence over a generic config file.
+    current = {"model": "current-model", "renderer": "current-renderer"}
+    write_run_info(tmp_path, current)
+    assert load_run_info(tmp_path) == current
+
+
+def test_unrelated_config_is_not_inference_metadata(tmp_path):
+    (tmp_path / "config.json").write_text(json.dumps({"learning_rate": 0.001}))
+    assert load_run_info(tmp_path) is None
+
+
+@pytest.mark.parametrize("environment_key", [None, "test-environment-key"])
+def test_training_credentials_load_checkout_env_without_overriding_environment(tmp_path, monkeypatch, environment_key):
+    import training.infer as infer
+    import os
+
+    # Use only fixture credentials; never read the real checkout's .env.
+    monkeypatch.setattr(infer, "__file__", str(tmp_path / "training" / "infer.py"))
+    monkeypatch.delenv("TINKER_API_KEY", raising=False)
+    monkeypatch.delenv("TINKER_PROJECT_ID", raising=False)
+    if environment_key:
+        monkeypatch.setenv("TINKER_API_KEY", environment_key)
+    (tmp_path / ".env").write_text("TINKER_API_KEY=test-file-key\nTINKER_PROJECT_ID=test-project\n")
+    infer.require_api_key()
+    assert os.environ["TINKER_API_KEY"] == (environment_key or "test-file-key")
+    assert os.environ["TINKER_PROJECT_ID"] == "test-project"

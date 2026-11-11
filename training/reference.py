@@ -12,6 +12,8 @@ import random
 import sys
 
 from evaluation.core import sha256, write_json
+from synthesis.arguments import nonnegative_int
+from synthesis.io import append_jsonl
 from training.data import load_conversations
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -78,6 +80,8 @@ def train(output, config, rows, datums):
     from tinker_cookbook.utils.lr_scheduling import compute_schedule_lr_multiplier
 
     steps = math.ceil(len(rows) / config["batch_size"]) * config["num_epochs"]
+    save_every = config.get("save_every_epochs", 1)
+    binding = {"dataset_sha256": config["data_sha256"], "config_sha256": sha256(output / "config.json")}
     with tinker.ServiceClient(project_id=config["project_id"], display_name="Spec2Behavior reference SFT") as service:
         client = service.create_lora_training_client(
             base_model=MODEL, rank=RANK, optimizer=tinker.types.DimuonOptimizerConfig(version=1),
@@ -109,10 +113,15 @@ def train(output, config, rows, datums):
                               "row_ids": [rows[i]["id"] for i in indices]}
                     metrics.write(json.dumps(record, allow_nan=False) + "\n")
                 print(json.dumps({"epoch": epoch + 1, "mean_training_nll": loss_sum / len(rows)}), flush=True)
-        checkpoint = client.save_weights_for_sampler("final").result()
-        binding = {"dataset_sha256": config["data_sha256"], "config_sha256": sha256(output / "config.json")}
-        (output / "checkpoints.jsonl").write_text(json.dumps(
-            {"name": "final", "step": step, "sampler_path": checkpoint.path, "binding": binding}) + "\n")
+                final = epoch + 1 == config["num_epochs"]
+                if final or (save_every and (epoch + 1) % save_every == 0):
+                    name = "final" if final else f"epoch-{epoch + 1:02d}"
+                    state = client.save_state(name, ttl_seconds=None).result()
+                    sampler = client.save_weights_for_sampler(name, ttl_seconds=None).result()
+                    append_jsonl(output / "checkpoints.jsonl", {
+                        "name": name, "epoch": epoch + 1, "batch": 0, "step": step,
+                        "state_path": state.path, "sampler_path": sampler.path, "binding": binding,
+                    })
         write_json(output / "status.json", {"state": "complete", "completed_steps": step,
                                              "trained_rows": len(rows) * config["num_epochs"]})
 
@@ -121,7 +130,10 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--collection", required=True, choices=COLLECTIONS)
     parser.add_argument("--batch-size", type=int, choices=(8, 16, 32), default=16)
-    parser.add_argument("--epochs", type=int, choices=(1, 3, 5, 10), default=10)
+    parser.add_argument("--epochs", type=int, choices=(1, 3, 5, 10), default=10,
+                        help="Training epochs (default: 10); shorter schedules reproduce earlier comparisons")
+    parser.add_argument("--save-every-epochs", type=nonnegative_int, default=1,
+                        help="Save training state and sampler every N epochs (default: 1); 0 saves only final")
     parser.add_argument("--output", type=Path, required=True, help="Fresh run directory under runs/ or local/")
     parser.add_argument("--execute", action="store_true", help="Start paid training after reviewing the plan")
     args = parser.parse_args(argv)
@@ -134,7 +146,7 @@ def main(argv=None):
                   "data": str(path.relative_to(ROOT)), "data_sha256": digest, "rows": len(rows),
                   "num_epochs": args.epochs, "batch_size": args.batch_size, "lora_rank": RANK, "optimizer_version": 1,
                   "learning_rate": INITIAL_LR, "lr_schedule": "linear", "train_on_what": TRAIN_ON,
-                  "max_length": MAX_LENGTH, "shuffle_seed": 0}
+                  "max_length": MAX_LENGTH, "shuffle_seed": 0, "save_every_epochs": args.save_every_epochs}
         plan = {**config, "optimizer_updates": math.ceil(len(rows) / args.batch_size) * args.epochs,
                 "tokenizer_revision": TOKENIZER_REVISION, "dependencies": VERSIONS}
         print(json.dumps(plan, indent=2), flush=True)

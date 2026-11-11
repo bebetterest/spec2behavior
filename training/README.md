@@ -23,7 +23,19 @@ python -m training.reference \
   --output runs/reference/model-spec-original-b8-e10
 ```
 
-Set `TINKER_API_KEY` and `TINKER_PROJECT_ID` in your environment or the checkout's ignored `.env`. Add `--execute` to the preview command to start paid training. The runner downloads the pinned public tokenizer files and saves the final sampler and per-step metrics under the specified run directory. Use a fresh directory for each execution.
+Set `TINKER_API_KEY` and `TINKER_PROJECT_ID` in your environment or the checkout's ignored `.env`. Add `--execute` to the preview command to start paid training. The runner downloads the pinned public tokenizer files and saves per-step metrics and checkpoints under the specified run directory. Use a fresh directory for each execution.
+
+The default is **10 epochs**, saving both training state (including optimizer state) and sampler weights after **every epoch**. The first nine checkpoints are named `epoch-01` through `epoch-09`; the tenth is `final`, without a duplicate save. Each entry in `checkpoints.jsonl` records its epoch, step, paths, and data/configuration hashes. Checkpoints have no automatic expiration. Use `--save-every-epochs N` to change the interval, or `0` to save only the final checkpoint; the final checkpoint is always saved. Saving a checkpoint does not run evaluation. The reference runner still starts a fresh training run; its state checkpoints can be loaded through the Tinker SDK, but it does not automatically resume interrupted runs.
+
+Sample directly from the newest saved checkpoint, including existing reference runs that record their model and renderer in `config.json`:
+
+```bash
+python -m training infer \
+  --log-dir runs/reference/model-spec-original-b8-e10 \
+  --prompt "Explain what a user message is allowed to override."
+```
+
+Inference also reads the checkout's ignored `.env`; existing environment variables take precedence. To sample an earlier epoch, keep `--log-dir` and add `--model-path` with that epoch's `sampler_path` from `checkpoints.jsonl`. The fixed policy evaluation command continues to select the final checkpoint.
 
 Repeat for each collection (`model-spec-original`, `model-spec-generic`, `constitution-original`, `constitution-generic`) and each batch size (8, 16, 32) to get the twelve default configurations. Use `--epochs 1`, `3`, or `5` in separate directories for the other horizons in the accuracy figure. All horizons start from the base with their own learning-rate schedule. See [fixed policy evaluation](../evaluation/README.md#reproduce-the-reference-epoch-sweep) for the next command.
 
